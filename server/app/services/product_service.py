@@ -58,10 +58,6 @@ class ProductService:
             # Convert Pydantic model to dict
             product_dict = product_data.model_dump(exclude_unset=True)
 
-            # Convert category enum to string for repository
-            if "category" in product_dict and product_dict["category"]:
-                product_dict["category"] = product_dict["category"].upper()
-
             # Call repository
             product = await self.repo.create(session, product_dict)
 
@@ -245,10 +241,6 @@ class ProductService:
 
             # Convert Pydantic model to dict, excluding unset fields
             update_dict = update_data.model_dump(exclude_unset=True)
-
-            # Convert category enum to string for repository
-            if "category" in update_dict and update_dict["category"]:
-                update_dict["category"] = update_dict["category"].upper()
 
             # Business logic: Log significant stock changes
             if "stock_qty" in update_dict:
