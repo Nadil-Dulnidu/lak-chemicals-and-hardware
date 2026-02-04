@@ -2,12 +2,29 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config.open_api_tags import openapi_tags
+from app.routers.product_router import router as product_router
+from contextlib import asynccontextmanager
+from app.utils.db import create_db_and_tables
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan manager for the application.
+
+    Args:
+        app (FastAPI): The FastAPI application instance.
+    """
+    await create_db_and_tables()
+    yield
+
 
 app = FastAPI(
     title="Lak Chemicals and Hardware API",
     description="API for Lak Chemicals and Hardware",
     version="1.0.0",
     openapi_tags=openapi_tags,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -17,6 +34,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -39,6 +57,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         content={"detail": "Internal server error"},
     )
 
+
 @app.get("/", status_code=status.HTTP_200_OK, tags=["Main"])
 async def root():
     """
@@ -59,3 +78,6 @@ async def health():
         dict: A dictionary containing a message indicating that the system is healthy.
     """
     return {"message": "Lak Chemicals and Hardware is healthy"}
+
+
+app.include_router(product_router)
