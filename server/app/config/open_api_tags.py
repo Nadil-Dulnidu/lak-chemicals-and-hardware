@@ -23,4 +23,12 @@ openapi_tags = [
         "name": "Quotations",
         "description": "Operations related to quotation requests, including creation, status management, and conversion to orders.",
     },
+    {
+        "name": "Orders",
+        "description": "Operations related to order management, including creation from cart/quotation, status tracking, and inventory synchronization.",
+    },
+    {
+        "name": "Sales",
+        "description": "Operations related to sales records and analytics, including filtering, reporting, and AI forecasting data.",
+    },
 ]

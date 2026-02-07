@@ -1,3 +1,3 @@
-from .enums import ProductCategory, MovementType, QuotationStatus
+from .enums import ProductCategory, MovementType, QuotationStatus, OrderStatus
 
-__all__ = ["ProductCategory", "MovementType", "QuotationStatus"]
+__all__ = ["ProductCategory", "MovementType", "QuotationStatus", "OrderStatus"]

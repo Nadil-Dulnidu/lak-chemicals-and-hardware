@@ -28,3 +28,11 @@ class QuotationStatus(enum.Enum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+
+
+class OrderStatus(enum.Enum):
+    """Order status enumeration for order management"""
+
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
