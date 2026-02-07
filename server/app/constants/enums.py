@@ -13,3 +13,18 @@ class ProductCategory(enum.Enum):
     BUILDING_MATERIALS = "building_materials"
     SAFETY_EQUIPMENT = "safety_equipment"
     OTHER = "other"
+
+
+class MovementType(enum.Enum):
+    """Stock movement type enumeration for inventory tracking"""
+
+    IN = "IN"
+    OUT = "OUT"
+
+
+class QuotationStatus(enum.Enum):
+    """Quotation status enumeration for quotation management"""
+
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"

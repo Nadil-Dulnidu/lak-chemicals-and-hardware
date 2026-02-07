@@ -4,6 +4,9 @@ from fastapi.responses import JSONResponse
 from app.config.open_api_tags import openapi_tags
 from app.routers.product_router import router as product_router
 from app.routers.supplier_router import router as supplier_router
+from app.routers.inventory_router import router as inventory_router
+from app.routers.cart_router import router as cart_router
+from app.routers.quotation_router import router as quotation_router
 from contextlib import asynccontextmanager
 from app.utils.db import create_db_and_tables
 
@@ -83,3 +86,6 @@ async def health():
 
 app.include_router(product_router)
 app.include_router(supplier_router)
+app.include_router(inventory_router)
+app.include_router(cart_router)
+app.include_router(quotation_router)
