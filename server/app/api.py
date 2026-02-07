@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config.open_api_tags import openapi_tags
 from app.routers.product_router import router as product_router
+from app.routers.supplier_router import router as supplier_router
 from contextlib import asynccontextmanager
 from app.utils.db import create_db_and_tables
 
@@ -81,3 +82,4 @@ async def health():
 
 
 app.include_router(product_router)
+app.include_router(supplier_router)

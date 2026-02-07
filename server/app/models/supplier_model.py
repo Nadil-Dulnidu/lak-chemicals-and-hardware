@@ -4,28 +4,26 @@ from sqlalchemy import Column, String, Text, DateTime, Float, Integer, Boolean, 
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.constants import ProductCategory
 from app.utils.db import Base
 
 
-class Product(Base):
-    __tablename__ = "products"
+class Supplier(Base):
+    __tablename__ = "suppliers"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=False)
-    brand = Column(String(255), nullable=False)
-    category = Column(Enum(ProductCategory), nullable=False)
-    price = Column(Float, nullable=False)
-    stock_qty = Column(Integer, nullable=False)
-    image_url = Column(String(255), nullable=False)
+    contact_person = Column(String(255), nullable=True)
+    contact_number = Column(String(50), nullable=False)
+    email = Column(String(255), nullable=False, unique=True)
+    address = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_purchase_date = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True)
 
-    # Many-to-many relationship with Supplier
-    suppliers = relationship(
-        "Supplier",
+    # Many-to-many relationship with Product
+    products = relationship(
+        "Product",
         secondary="supplier_products",
-        back_populates="products",
+        back_populates="suppliers",
         lazy="selectin",
     )

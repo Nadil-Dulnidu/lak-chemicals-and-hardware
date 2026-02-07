@@ -7,4 +7,8 @@ openapi_tags = [
         "name": "Products",
         "description": "Operations related to product management, including catalog details, inventory tracking, and categorization.",
     },
+    {
+        "name": "Suppliers",
+        "description": "Operations related to supplier management, including catalog details, inventory tracking, and categorization.",
+    },
 ]
