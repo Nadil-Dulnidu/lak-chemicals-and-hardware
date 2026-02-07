@@ -36,3 +36,12 @@ class OrderStatus(enum.Enum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+
+
+class ReportType(enum.Enum):
+    """Report type enumeration for analytics and reporting"""
+
+    SALES = "SALES"
+    INVENTORY = "INVENTORY"
+    PRODUCT_PERFORMANCE = "PRODUCT_PERFORMANCE"
+    LOW_STOCK = "LOW_STOCK"

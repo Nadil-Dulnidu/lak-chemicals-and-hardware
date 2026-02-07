@@ -8,6 +8,7 @@ from app.routers.inventory_router import router as inventory_router
 from app.routers.cart_router import router as cart_router
 from app.routers.quotation_router import router as quotation_router
 from app.routers.order_router import router as order_router
+from app.routers.report_router import router as report_router
 from contextlib import asynccontextmanager
 from app.utils.db import create_db_and_tables
 
@@ -91,3 +92,4 @@ app.include_router(inventory_router)
 app.include_router(cart_router)
 app.include_router(quotation_router)
 app.include_router(order_router)
+app.include_router(report_router)
