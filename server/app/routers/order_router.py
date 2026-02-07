@@ -17,7 +17,7 @@ from app.schemas.order_schema import (
     SalesSummaryResponse,
 )
 
-router = APIRouter(prefix="/orders", tags=["Orders"])
+router = APIRouter(prefix="/orders", tags=["Orders & Sales"])
 
 # Initialize services
 order_service = OrderService()
@@ -305,7 +305,6 @@ async def get_order_sales(
     response_model=SalesListResponse,
     summary="Get all sales records",
     description="Get all sales records for analytics",
-    tags=["Sales"],
 )
 async def get_all_sales(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -329,7 +328,6 @@ async def get_all_sales(
     response_model=SalesListResponse,
     summary="Filter sales records",
     description="Filter sales records for analytics",
-    tags=["Sales"],
 )
 async def filter_sales(
     filter_params: SalesFilterParams,
@@ -354,7 +352,6 @@ async def filter_sales(
     response_model=SalesSummaryResponse,
     summary="Get sales summary",
     description="Get sales summary/analytics",
-    tags=["Sales"],
 )
 async def get_sales_summary(
     filter_params: SalesFilterParams = None,
