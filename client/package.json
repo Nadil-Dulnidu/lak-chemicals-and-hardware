@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.79",
+    "@clerk/nextjs": "^6.37.3",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@rive-app/react-webgl2": "^4.26.2",
     "@streamdown/cjk": "^1.0.1",
