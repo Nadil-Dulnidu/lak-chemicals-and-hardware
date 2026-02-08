@@ -127,6 +127,19 @@ class LowStockReportParams(BaseModel):
     )
 
 
+class RunReportParams(BaseModel):
+    """Optional parameter overrides when running a saved report"""
+
+    start_date: Optional[datetime] = Field(None, description="Override start date")
+    end_date: Optional[datetime] = Field(None, description="Override end date")
+    category: Optional[str] = Field(None, description="Override category filter")
+    product_id: Optional[str] = Field(None, description="Override product filter")
+    group_by: Optional[str] = Field(None, description="Override grouping")
+    top_n: Optional[int] = Field(None, description="Override top N")
+    threshold_percentage: Optional[int] = Field(None, description="Override threshold")
+    low_stock_only: Optional[bool] = Field(None, description="Override low stock filter")
+
+
 # ============= Report Data Schemas =============
 
 

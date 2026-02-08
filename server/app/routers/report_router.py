@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional, Dict, Any
 
 from app.utils.db import get_async_session
 from app.services.report_service import ReportService
@@ -13,6 +14,7 @@ from app.schemas.report_schema import (
     InventoryReportParams,
     ProductPerformanceParams,
     LowStockReportParams,
+    RunReportParams,
     SalesReportData,
     InventoryReportData,
     ProductPerformanceData,
@@ -193,6 +195,49 @@ async def delete_report(
         )
 
     return None
+
+
+@router.post(
+    "/{report_id}/run",
+    response_model=Dict[str, Any],
+    summary="Run saved report",
+    description="Generate a report using a saved configuration",
+)
+async def run_saved_report(
+    report_id: int,
+    overrides: Optional[RunReportParams] = None,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Run a saved report configuration to generate report data.
+
+    - **report_id**: ID of the saved report configuration
+    - **overrides**: Optional parameter overrides (start_date, end_date, category, etc.)
+
+    This endpoint bridges saved configurations with report generation.
+    You can optionally override specific parameters without modifying the saved config.
+
+    Example:
+    - Save a "Monthly Sales Report" config with fixed parameters
+    - Run it anytime with `POST /reports/5/run`
+    - Override just the date range: `POST /reports/5/run` with body `{"start_date": "2024-02-01"}`
+    """
+    try:
+        override_dict = overrides.model_dump(exclude_unset=True) if overrides else None
+        result = await report_service.run_saved_report(
+            session, report_id, override_dict
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error running saved report: {str(e)}",
+        )
 
 
 # ============= Report Generation Endpoints =============

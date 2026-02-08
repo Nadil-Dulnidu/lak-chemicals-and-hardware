@@ -2,6 +2,7 @@ import json
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from datetime import datetime, timedelta
+from uuid import UUID
 from sqlalchemy import select, func, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -241,6 +242,144 @@ class ReportService:
                 ),
             )
             return False
+
+    async def run_saved_report(
+        self,
+        session: AsyncSession,
+        report_id: int,
+        overrides: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run a saved report configuration.
+
+        Loads the saved config, applies any parameter overrides, and generates the report.
+
+        Args:
+            session: Database session
+            report_id: ID of saved report configuration
+            overrides: Optional parameter overrides
+
+        Returns:
+            Report data based on report type
+        """
+        try:
+            # Get the saved report configuration
+            report = await self.repo.get_by_id(session, report_id)
+
+            if not report:
+                raise ValueError(f"Report configuration {report_id} not found")
+
+            self._logger.info(
+                f"Running saved report: {report.report_name} (ID: {report_id})",
+                extra=create_owasp_log_context(
+                    user="system",
+                    action="run_saved_report",
+                    location="ReportService.run_saved_report",
+                ),
+            )
+
+            # Parse stored parameters
+            params = {}
+            if report.parameters:
+                try:
+                    import json
+
+                    params = json.loads(report.parameters)
+                except json.JSONDecodeError:
+                    params = {}
+
+            # Apply overrides
+            if overrides:
+                for key, value in overrides.items():
+                    if value is not None:
+                        params[key] = value
+
+            # Generate report based on type
+            report_type = report.report_type.value
+
+            if report_type == "SALES":
+                # Build SalesReportParams
+                from datetime import datetime
+
+                sales_params = SalesReportParams(
+                    start_date=self._parse_datetime(
+                        params.get("start_date", datetime.now().isoformat())
+                    ),
+                    end_date=self._parse_datetime(
+                        params.get("end_date", datetime.now().isoformat())
+                    ),
+                    product_id=params.get("product_id"),
+                    category=params.get("category"),
+                    group_by=params.get("group_by", "day"),
+                )
+                result = await self.generate_sales_report(session, sales_params)
+
+            elif report_type == "INVENTORY":
+                inventory_params = InventoryReportParams(
+                    category=params.get("category"),
+                    low_stock_only=params.get("low_stock_only", False),
+                )
+                result = await self.generate_inventory_report(session, inventory_params)
+
+            elif report_type == "PRODUCT_PERFORMANCE":
+                from datetime import datetime
+
+                perf_params = ProductPerformanceParams(
+                    start_date=self._parse_datetime(
+                        params.get("start_date", datetime.now().isoformat())
+                    ),
+                    end_date=self._parse_datetime(
+                        params.get("end_date", datetime.now().isoformat())
+                    ),
+                    category=params.get("category"),
+                    top_n=params.get("top_n", 10),
+                )
+                result = await self.generate_product_performance_report(
+                    session, perf_params
+                )
+
+            elif report_type == "LOW_STOCK":
+                low_stock_params = LowStockReportParams(
+                    category=params.get("category"),
+                    threshold_percentage=params.get("threshold_percentage", 20),
+                )
+                result = await self.generate_low_stock_report(session, low_stock_params)
+
+            else:
+                raise ValueError(f"Unknown report type: {report_type}")
+
+            return result.model_dump()
+
+        except ValueError:
+            raise
+        except Exception as e:
+            self._logger.error(
+                f"Error running saved report {report_id}: {str(e)}",
+                extra=create_owasp_log_context(
+                    user="system",
+                    action="run_saved_report_error",
+                    location="ReportService.run_saved_report",
+                ),
+            )
+            raise
+
+    def _parse_datetime(self, value) -> datetime:
+        """Parse datetime from string or return as-is if already datetime."""
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            # Try ISO format first
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+            # Try other common formats
+            for fmt in ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]:
+                try:
+                    return datetime.strptime(value, fmt)
+                except ValueError:
+                    continue
+        return datetime.now()
 
     # ============= Report Generation =============
 
@@ -716,11 +855,15 @@ class ReportService:
         # Get product names
         breakdown = []
         for product_id, data in product_sales.items():
-            # Fetch product name
-            result = await session.execute(
-                select(Product.name).where(Product.id == product_id)
-            )
-            product_name = result.scalar_one_or_none()
+            # Fetch product name - convert string back to UUID for comparison
+            try:
+                uuid_id = UUID(product_id)
+                result = await session.execute(
+                    select(Product.name).where(Product.id == uuid_id)
+                )
+                product_name = result.scalar_one_or_none()
+            except (ValueError, TypeError):
+                product_name = None
 
             breakdown.append(
                 {
@@ -744,11 +887,14 @@ class ReportService:
         category_sales = {}
 
         for sale in sales:
-            # Fetch product category
-            result = await session.execute(
-                select(Product.category).where(Product.id == sale.product_id)
-            )
-            category = result.scalar_one_or_none()
+            # Fetch product category - use the UUID directly from sale
+            try:
+                result = await session.execute(
+                    select(Product.category).where(Product.id == sale.product_id)
+                )
+                category = result.scalar_one_or_none()
+            except Exception:
+                category = None
 
             if category:
                 category_name = category.value
