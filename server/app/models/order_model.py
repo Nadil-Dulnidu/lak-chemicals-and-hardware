@@ -9,19 +9,13 @@ from app.utils.db import Base
 class Order(Base):
     """
     Model for customer orders.
-    Stores order information including status, total amount, and payment details.
+    Stores order information including status, total amount, payment details, and shipping info.
     """
 
     __tablename__ = "orders"
 
     order_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(50), nullable=False, index=True)
-    quotation_id = Column(
-        Integer,
-        ForeignKey("quotations.quotation_id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
     status = Column(
         Enum(OrderStatus),
         nullable=False,
@@ -35,6 +29,12 @@ class Order(Base):
     cancelled_date = Column(DateTime, nullable=True)
     notes = Column(String(500), nullable=True)
 
+    # Shipping Information
+    customer_name = Column(String(100), nullable=True)
+    phone = Column(String(20), nullable=True)
+    address = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+
     # Relationships
     order_items = relationship(
         "OrderItem",
@@ -42,7 +42,6 @@ class Order(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    quotation = relationship("Quotation", lazy="selectin")
 
     def __repr__(self):
         return f"<Order(id={self.order_id}, user_id={self.user_id}, status={self.status.value}, total={self.total_amount})>"

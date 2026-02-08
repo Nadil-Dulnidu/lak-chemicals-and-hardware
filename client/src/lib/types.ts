@@ -154,7 +154,6 @@ export interface OrderItem {
 export interface Order {
   order_id: number;
   user_id: string;
-  quotation_id?: number;
   status: OrderStatus;
   total_amount: number;
   payment_method?: string;
@@ -163,19 +162,24 @@ export interface Order {
   cancelled_date?: string;
   notes?: string;
   items: OrderItem[];
+  // Shipping Information
+  customer_name?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
 }
 
 export interface OrderCreate {
   items: { product_id: string; quantity: number }[];
   payment_method?: string;
   notes?: string;
+  // Shipping Information
+  customer_name?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
 }
 
-export interface OrderFromQuotation {
-  quotation_id: number;
-  payment_method?: string;
-  notes?: string;
-}
 
 export interface OrderListResponse {
   orders: Order[];
@@ -295,19 +299,19 @@ export interface Supplier {
   id: string;
   name: string;
   contact_person?: string;
-  email?: string;
-  phone?: string;
+  contact_number: string;
+  email: string;
   address?: string;
   is_active: boolean;
   created_at: string;
-  updated_at: string;
+  last_purchase_date?: string;
 }
 
 export interface SupplierCreate {
   name: string;
   contact_person?: string;
-  email?: string;
-  phone?: string;
+  contact_number: string;
+  email: string;
   address?: string;
 }
 

@@ -1,7 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Query,
+    UploadFile,
+    File,
+    Form,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import uuid
+import json
 
 from app.utils.db import get_async_session
 from app.services.product_service import ProductService
@@ -14,8 +24,7 @@ from app.schemas.product_schema import (
     LowStockAlert,
     ProductCategoryEnum,
 )
-
-# from app.utils.image_upload import upload_image
+from app.utils.image_upload import upload_image
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -28,15 +37,21 @@ product_service = ProductService()
     response_model=ProductResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new product",
-    description="Create a new product with the provided information",
+    description="Create a new product with optional image upload",
 )
 async def create_product(
-    product_data: ProductCreate,
+    name: str = Form(...),
+    price: float = Form(...),
+    stock_qty: int = Form(...),
+    category: Optional[str] = Form(None),
+    brand: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    reorder_level: Optional[int] = Form(10),
+    image: Optional[UploadFile] = File(None),
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
 ):
     """
-    Create a new product.
+    Create a new product with optional image upload.
 
     - **name**: Product name (required)
     - **price**: Product price (required, must be positive)
@@ -44,16 +59,32 @@ async def create_product(
     - **category**: Product category (optional)
     - **brand**: Product brand (optional)
     - **description**: Product description (optional)
-    - **image_url**: Product image URL (optional)
+    - **reorder_level**: Reorder level for low stock alerts (optional, default: 10)
+    - **image**: Product image file (optional)
     """
     try:
-        # image_url = await upload_image(file)
+        # Upload image if provided
+        image_url = None
+        if image and image.filename:
+            image_url = await upload_image(image)
+            if not image_url:
+                # Log warning but continue without image
+                pass
 
-        # # append image_url to product_data
-        # product_data.image_url = image_url
+        # Create product data
+        product_data = ProductCreate(
+            name=name,
+            price=price,
+            stock_qty=stock_qty,
+            category=ProductCategoryEnum(category) if category else None,
+            brand=brand,
+            description=description,
+            reorder_level=reorder_level or 10,
+            image_url=image_url,
+        )
 
         product = await product_service.create_product(
-            session, product_data, user_id="admin"  # Replace with actual user_id
+            session, product_data, user_id="admin"
         )
 
         if not product:

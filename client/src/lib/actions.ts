@@ -1,5 +1,5 @@
 // API Actions for LAK Chemicals and Hardware
-import { apiClient } from "./api";
+import { apiClient, apiClientFormData } from "./api";
 import type {
   Product,
   ProductCreate,
@@ -17,7 +17,6 @@ import type {
   QuotationListResponse,
   Order,
   OrderCreate,
-  OrderFromQuotation,
   OrderListResponse,
   SalesListResponse,
   SalesSummary,
@@ -39,11 +38,20 @@ export const productActions = {
 
   getById: (id: string) => apiClient<Product>(`/products/${id}`),
 
-  create: (data: ProductCreate) =>
-    apiClient<Product>("/products/", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  // Create product with optional image
+  create: (data: ProductCreate, image?: File) => {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("price", data.price.toString());
+    formData.append("stock_qty", data.stock_qty.toString());
+    if (data.category) formData.append("category", data.category);
+    if (data.brand) formData.append("brand", data.brand);
+    if (data.description) formData.append("description", data.description);
+    if (data.reorder_level !== undefined) formData.append("reorder_level", data.reorder_level.toString());
+    if (image) formData.append("image", image);
+
+    return apiClientFormData<Product>("/products/", formData);
+  },
 
   update: (id: string, data: ProductUpdate) =>
     apiClient<Product>(`/products/${id}`, {
@@ -153,12 +161,6 @@ export const orderActions = {
 
   create: (data: OrderCreate) =>
     apiClient<Order>("/orders", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  createFromQuotation: (data: OrderFromQuotation) =>
-    apiClient<Order>("/orders/from-quotation", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -276,6 +278,25 @@ export const supplierActions = {
     apiClient<void>(`/suppliers/${id}`, {
       method: "DELETE",
     }),
+
+  // Link a product to a supplier
+  linkProduct: (supplierId: string, productId: string, supplyPrice?: number) =>
+    apiClient<{ message: string }>(`/suppliers/${supplierId}/products`, {
+      method: "POST",
+      body: JSON.stringify({ product_id: productId, supply_price: supplyPrice }),
+    }),
+
+  // Unlink a product from a supplier
+  unlinkProduct: (supplierId: string, productId: string) =>
+    apiClient<void>(`/suppliers/${supplierId}/products/${productId}`, {
+      method: "DELETE",
+    }),
+
+  // Get supplier with product details
+  getDetail: (id: string) =>
+    apiClient<Supplier & { products: { product_id: string; product_name: string; supply_price?: number }[] }>(
+      `/suppliers/${id}/detail`
+    ),
 };
 
 // ============= Payment Actions =============
@@ -285,4 +306,12 @@ export const paymentActions = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  createCheckout: (orderId: number) =>
+    apiClient<{ checkout_url: string }>(`/payments/create-checkout-session/${orderId}`, {
+      method: "POST",
+    }),
+
+  getPaymentStatus: (orderId: number) =>
+    apiClient<{ payment_status: string; payment_intent_id?: string }>(`/payments/status/${orderId}`),
 };

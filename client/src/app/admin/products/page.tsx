@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { AdminLayout } from "@/components/layouts/admin-layout";
-import { productActions } from "@/lib/actions";
-import { Product, ProductCategory, ProductCreate } from "@/lib/types";
+import { productActions, supplierActions } from "@/lib/actions";
+import { Product, ProductCategory, ProductCreate, Supplier } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Plus, Search, MoreVertical, Pencil, Trash2, Package } from "lucide-react";
+import { Plus, Search, MoreVertical, Pencil, Trash2, Package, Truck, ImagePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const categories: ProductCategory[] = ["chemicals", "hardware", "tools", "paints", "electrical", "plumbing", "building_materials", "safety_equipment", "other"];
@@ -33,10 +33,15 @@ const categoryColors: Record<string, string> = {
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
+  const [supplyPrice, setSupplyPrice] = useState<number | undefined>(undefined);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProductCreate>({
     name: "",
     price: 0,
@@ -51,16 +56,26 @@ export default function AdminProductsPage() {
     try {
       const response = await productActions.getAll(0, 500, true);
       setProducts(response.products);
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch products");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  const fetchSuppliers = useCallback(async () => {
+    try {
+      const response = await supplierActions.getAll(0, 500);
+      setSuppliers(response.suppliers.filter((s) => s.is_active));
+    } catch {
+      // Suppliers fetch failed, continue without suppliers
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    fetchSuppliers();
+  }, [fetchProducts, fetchSuppliers]);
 
   const resetForm = () => {
     setFormData({
@@ -73,6 +88,27 @@ export default function AdminProductsPage() {
       reorder_level: 10,
     });
     setEditingProduct(null);
+    setSelectedSupplierId("");
+    setSupplyPrice(undefined);
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleOpenDialog = (product?: Product) => {
@@ -87,6 +123,9 @@ export default function AdminProductsPage() {
         description: product.description || "",
         reorder_level: product.reorder_level,
       });
+      // TODO: Could fetch and display current supplier for this product
+      setSelectedSupplierId("");
+      setSupplyPrice(undefined);
     } else {
       resetForm();
     }
@@ -97,13 +136,28 @@ export default function AdminProductsPage() {
     e.preventDefault();
 
     try {
+      let productId: string;
+
       if (editingProduct) {
         await productActions.update(editingProduct.id, formData);
+        productId = editingProduct.id;
         toast.success("Product updated successfully");
       } else {
-        await productActions.create(formData);
+        const newProduct = await productActions.create(formData, imageFile || undefined);
+        productId = newProduct.id;
         toast.success("Product created successfully");
       }
+
+      // Link to supplier if one is selected
+      if (selectedSupplierId) {
+        try {
+          await supplierActions.linkProduct(selectedSupplierId, productId, supplyPrice);
+          toast.success("Product linked to supplier");
+        } catch {
+          toast.error("Product saved but failed to link to supplier");
+        }
+      }
+
       setIsDialogOpen(false);
       resetForm();
       fetchProducts();
@@ -152,7 +206,7 @@ export default function AdminProductsPage() {
                 Add Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
               </DialogHeader>
@@ -196,6 +250,71 @@ export default function AdminProductsPage() {
                   <label className="text-sm font-medium mb-2 block">Reorder Level</label>
                   <Input type="number" value={formData.reorder_level} onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })} min={0} />
                 </div>
+
+                {/* Image Upload Section */}
+                {!editingProduct && (
+                  <div className="border-t border-border/50 pt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ImagePlus className="h-4 w-4 text-orange-400" />
+                      <span className="text-sm font-medium">Product Image</span>
+                    </div>
+                    {imagePreview ? (
+                      <div className="relative w-32 h-32">
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-lg" />
+                        <button type="button" onClick={clearImage} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-orange-500/50 transition-colors">
+                          <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
+                          <span className="text-sm text-muted-foreground">Click to upload image</span>
+                          <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Supplier Assignment Section */}
+                <div className="border-t border-border/50 pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Truck className="h-4 w-4 text-orange-400" />
+                    <span className="text-sm font-medium">Assign Supplier</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Supplier</label>
+                      <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select supplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {suppliers.map((supplier) => (
+                            <SelectItem key={supplier.id} value={supplier.id}>
+                              {supplier.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Supply Price (LKR)</label>
+                      <Input
+                        type="number"
+                        value={supplyPrice ?? ""}
+                        onChange={(e) => setSupplyPrice(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        placeholder="Cost from supplier"
+                        min={0}
+                        step={0.01}
+                        disabled={!selectedSupplierId}
+                      />
+                    </div>
+                  </div>
+                  {suppliers.length === 0 && <p className="text-xs text-muted-foreground mt-2">No suppliers available. Add suppliers first.</p>}
+                </div>
+
                 <div>
                   <label className="text-sm font-medium mb-2 block">Description</label>
                   <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Product description" rows={3} />

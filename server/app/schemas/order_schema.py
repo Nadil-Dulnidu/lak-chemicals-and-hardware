@@ -59,22 +59,20 @@ class OrderCreate(BaseModel):
     )
     notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
 
+    # Shipping Information
+    customer_name: Optional[str] = Field(
+        None, max_length=100, description="Customer full name"
+    )
+    phone: Optional[str] = Field(None, max_length=20, description="Phone number")
+    address: Optional[str] = Field(None, max_length=255, description="Shipping address")
+    city: Optional[str] = Field(None, max_length=100, description="City")
+
     @field_validator("items")
     @classmethod
     def validate_items(cls, v):
         if len(v) == 0:
             raise ValueError("At least one item is required")
         return v
-
-
-class OrderFromQuotation(BaseModel):
-    """Schema for creating order from quotation"""
-
-    quotation_id: int = Field(..., description="Quotation ID to convert")
-    payment_method: Optional[str] = Field(
-        None, max_length=50, description="Payment method"
-    )
-    notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
 
 
 class OrderUpdateStatus(BaseModel):
@@ -88,7 +86,6 @@ class OrderResponse(BaseModel):
 
     order_id: int
     user_id: str
-    quotation_id: Optional[int] = None
     status: str
     total_amount: Decimal
     payment_method: Optional[str] = None
@@ -97,6 +94,12 @@ class OrderResponse(BaseModel):
     cancelled_date: Optional[datetime] = None
     notes: Optional[str] = None
     items: List[OrderItemResponse]
+
+    # Shipping Information
+    customer_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,5 +1,6 @@
 from fastapi import File, UploadFile
 from app.config.imagekit import imagekit
+from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
 import tempfile
 import shutil
 import os

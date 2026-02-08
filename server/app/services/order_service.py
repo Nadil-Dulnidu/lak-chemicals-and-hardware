@@ -3,12 +3,10 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.order_repo import OrderRepository
-from app.repository.quotation_repo import QuotationRepository
 from app.repository.product_repo import ProductRepository
-from app.constants import OrderStatus, QuotationStatus
+from app.constants import OrderStatus
 from app.schemas.order_schema import (
     OrderCreate,
-    OrderFromQuotation,
     OrderUpdateStatus,
     OrderResponse,
     OrderListResponse,
@@ -21,12 +19,11 @@ from app.config.logging import get_logger, create_owasp_log_context
 class OrderService:
     """
     Service layer for Order business logic.
-    Handles order creation, status management, and conversions.
+    Handles order creation and status management.
     """
 
     def __init__(self):
         self.repo = OrderRepository()
-        self.quotation_repo = QuotationRepository()
         self.product_repo = ProductRepository()
         self._logger = get_logger(__name__)
 
@@ -63,6 +60,10 @@ class OrderService:
                 "items": [item.model_dump() for item in order_data.items],
                 "payment_method": order_data.payment_method,
                 "notes": order_data.notes,
+                "customer_name": order_data.customer_name,
+                "phone": order_data.phone,
+                "address": order_data.address,
+                "city": order_data.city,
             }
 
             # Create order
@@ -100,109 +101,6 @@ class OrderService:
                     user=user_id,
                     action="create_order_error",
                     location="OrderService.create_order",
-                ),
-            )
-            raise
-
-    async def create_order_from_quotation(
-        self,
-        session: AsyncSession,
-        user_id: str,
-        order_data: OrderFromQuotation,
-    ) -> Optional[OrderResponse]:
-        """
-        Create order from approved quotation.
-
-        Args:
-            session: Database session
-            user_id: User ID
-            order_data: Order data with quotation_id
-
-        Returns:
-            OrderResponse or None if creation fails
-        """
-        try:
-            self._logger.info(
-                f"Creating order from quotation {order_data.quotation_id} for user: {user_id}",
-                extra=create_owasp_log_context(
-                    user=user_id,
-                    action="create_order_from_quotation",
-                    location="OrderService.create_order_from_quotation",
-                ),
-            )
-
-            # Get quotation
-            quotation = await self.quotation_repo.get_by_id(
-                session, order_data.quotation_id
-            )
-
-            if not quotation:
-                raise ValueError(f"Quotation not found: {order_data.quotation_id}")
-
-            # Verify user owns this quotation
-            if quotation.user_id != user_id:
-                raise ValueError("Unauthorized access to quotation")
-
-            # Verify quotation is approved
-            if quotation.status != QuotationStatus.APPROVED:
-                raise ValueError(
-                    f"Quotation must be APPROVED. Current status: {quotation.status.value}"
-                )
-
-            # Convert quotation items to order items
-            items = []
-            for quotation_item in quotation.quotation_items:
-                items.append(
-                    {
-                        "product_id": str(quotation_item.product_id),
-                        "quantity": quotation_item.quantity,
-                    }
-                )
-
-            # Prepare order data
-            order_dict = {
-                "user_id": user_id,
-                "quotation_id": order_data.quotation_id,
-                "items": items,
-                "payment_method": order_data.payment_method,
-                "notes": order_data.notes,
-            }
-
-            # Create order
-            order = await self.repo.create(session, order_dict)
-
-            if order:
-                self._logger.info(
-                    f"Order created from quotation: {order.order_id}",
-                    extra=create_owasp_log_context(
-                        user=user_id,
-                        action="create_order_from_quotation_success",
-                        location="OrderService.create_order_from_quotation",
-                    ),
-                )
-
-                return await self._to_response(order)
-
-            return None
-
-        except ValueError as e:
-            self._logger.error(
-                f"Validation error creating order from quotation: {str(e)}",
-                extra=create_owasp_log_context(
-                    user=user_id,
-                    action="create_order_from_quotation_validation_error",
-                    location="OrderService.create_order_from_quotation",
-                ),
-            )
-            raise
-
-        except Exception as e:
-            self._logger.error(
-                f"Service error creating order from quotation: {str(e)}",
-                extra=create_owasp_log_context(
-                    user=user_id,
-                    action="create_order_from_quotation_error",
-                    location="OrderService.create_order_from_quotation",
                 ),
             )
             raise
@@ -525,7 +423,6 @@ class OrderService:
         return OrderResponse(
             order_id=order.order_id,
             user_id=order.user_id,
-            quotation_id=order.quotation_id,
             status=order.status.value,
             total_amount=order.total_amount,
             payment_method=order.payment_method,
@@ -534,4 +431,8 @@ class OrderService:
             cancelled_date=order.cancelled_date,
             notes=order.notes,
             items=items,
+            customer_name=order.customer_name,
+            phone=order.phone,
+            address=order.address,
+            city=order.city,
         )

@@ -25,7 +25,7 @@ export default function AdminSuppliersPage() {
     name: "",
     contact_person: "",
     email: "",
-    phone: "",
+    contact_number: "",
     address: "",
   });
 
@@ -49,7 +49,7 @@ export default function AdminSuppliersPage() {
       name: "",
       contact_person: "",
       email: "",
-      phone: "",
+      contact_number: "",
       address: "",
     });
     setEditingSupplier(null);
@@ -61,8 +61,8 @@ export default function AdminSuppliersPage() {
       setFormData({
         name: supplier.name,
         contact_person: supplier.contact_person || "",
-        email: supplier.email || "",
-        phone: supplier.phone || "",
+        email: supplier.email,
+        contact_number: supplier.contact_number,
         address: supplier.address || "",
       });
     } else {
@@ -145,12 +145,12 @@ export default function AdminSuppliersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Email</label>
-                    <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" />
+                    <label className="text-sm font-medium mb-2 block">Email *</label>
+                    <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" required />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Phone</label>
-                    <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+94 XX XXX XXXX" />
+                    <label className="text-sm font-medium mb-2 block">Phone *</label>
+                    <Input value={formData.contact_number} onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })} placeholder="+94 XX XXX XXXX" required />
                   </div>
                 </div>
                 <div>
@@ -225,10 +225,10 @@ export default function AdminSuppliersPage() {
                       <span>{supplier.email}</span>
                     </div>
                   )}
-                  {supplier.phone && (
+                  {supplier.contact_number && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="h-4 w-4" />
-                      <span>{supplier.phone}</span>
+                      <span>{supplier.contact_number}</span>
                     </div>
                   )}
                   {supplier.address && (

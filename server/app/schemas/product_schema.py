@@ -18,8 +18,11 @@ class ProductBase(BaseModel):
     stock_qty: int = Field(
         ..., ge=0, description="Stock quantity (must be non-negative)"
     )
+    reorder_level: int = Field(
+        10, ge=0, description="Reorder level for low stock alerts"
+    )
     image_url: Optional[str] = Field(
-        None, max_length=255, description="Product image URL"
+        None, max_length=500, description="Product image URL"
     )
 
 
@@ -50,7 +53,8 @@ class ProductUpdate(BaseModel):
     category: Optional[ProductCategoryEnum] = None
     price: Optional[float] = Field(None, gt=0)
     stock_qty: Optional[int] = Field(None, ge=0)
-    image_url: Optional[str] = Field(None, max_length=255)
+    reorder_level: Optional[int] = Field(None, ge=0)
+    image_url: Optional[str] = Field(None, max_length=500)
     is_active: Optional[bool] = None
 
     @field_validator("price")

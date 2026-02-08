@@ -6,7 +6,6 @@ from app.services.order_service import OrderService
 from app.services.sales_service import SalesService
 from app.schemas.order_schema import (
     OrderCreate,
-    OrderFromQuotation,
     OrderUpdateStatus,
     OrderResponse,
     OrderListResponse,
@@ -32,7 +31,7 @@ sales_service = SalesService()
     response_model=OrderResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create order",
-    description="Create a new order directly",
+    description="Create a new order directly from cart",
 )
 async def create_order(
     order_data: OrderCreate,
@@ -45,6 +44,10 @@ async def create_order(
     - **items**: List of items with product_id and quantity (required, at least 1 item)
     - **payment_method**: Payment method (optional)
     - **notes**: Additional notes (optional)
+    - **customer_name**: Customer full name for shipping (optional)
+    - **phone**: Phone number for shipping (optional)
+    - **address**: Shipping address (optional)
+    - **city**: City for shipping (optional)
 
     The order will be created with PENDING status.
     Stock availability will be checked before order creation.
@@ -58,49 +61,6 @@ async def create_order(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create order",
-            )
-
-        return order
-
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-
-@router.post(
-    "/from-quotation",
-    response_model=OrderResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create order from quotation",
-    description="Convert an approved quotation into an order",
-)
-async def create_order_from_quotation(
-    order_data: OrderFromQuotation,
-    session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
-):
-    """
-    Create an order from an approved quotation.
-
-    - **quotation_id**: ID of the approved quotation (required)
-    - **payment_method**: Payment method (optional)
-    - **notes**: Additional notes (optional)
-
-    Requirements:
-    - Quotation must exist and belong to the user
-    - Quotation status must be APPROVED
-    - Stock availability will be checked
-    """
-    try:
-        user_id = "admin"  # Replace with actual user_id from authentication
-
-        order = await order_service.create_order_from_quotation(
-            session, user_id, order_data
-        )
-
-        if not order:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create order from quotation",
             )
 
         return order

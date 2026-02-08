@@ -5,6 +5,7 @@ from decimal import Decimal
 from sqlalchemy import select, delete, and_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import selectinload
 
 from app.models.order_model import Order, OrderItem
 from app.models.sale_model import Sale
@@ -66,11 +67,14 @@ class OrderRepository:
             # Create order
             order = Order(
                 user_id=order_data["user_id"],
-                quotation_id=order_data.get("quotation_id"),
                 status=OrderStatus.PENDING,
                 total_amount=Decimal("0.00"),
                 payment_method=order_data.get("payment_method"),
                 notes=order_data.get("notes"),
+                customer_name=order_data.get("customer_name"),
+                phone=order_data.get("phone"),
+                address=order_data.get("address"),
+                city=order_data.get("city"),
             )
             session.add(order)
             await session.flush()  # Get order_id
@@ -117,7 +121,17 @@ class OrderRepository:
             order.total_amount = total_amount
 
             await session.commit()
-            await session.refresh(order)
+
+            # Re-fetch the order with eager loading to avoid lazy loading issues
+            # This ensures product relationships are loaded within the async context
+            result = await session.execute(
+                select(Order)
+                .where(Order.order_id == order.order_id)
+                .options(
+                    selectinload(Order.order_items).selectinload(OrderItem.product)
+                )
+            )
+            order = result.scalar_one()
 
             self._logger.info(
                 f"Order created: {order.order_id} for user {order.user_id}",
@@ -160,7 +174,11 @@ class OrderRepository:
         """
         try:
             result = await session.execute(
-                select(Order).where(Order.order_id == order_id)
+                select(Order)
+                .where(Order.order_id == order_id)
+                .options(
+                    selectinload(Order.order_items).selectinload(OrderItem.product)
+                )
             )
             order = result.scalar_one_or_none()
 
@@ -207,6 +225,9 @@ class OrderRepository:
             query = (
                 select(Order)
                 .where(Order.user_id == user_id)
+                .options(
+                    selectinload(Order.order_items).selectinload(OrderItem.product)
+                )
                 .offset(skip)
                 .limit(limit)
                 .order_by(desc(Order.order_date))
@@ -256,7 +277,11 @@ class OrderRepository:
         """
         try:
             result = await session.execute(
-                select(Order).where(Order.order_id == order_id)
+                select(Order)
+                .where(Order.order_id == order_id)
+                .options(
+                    selectinload(Order.order_items).selectinload(OrderItem.product)
+                )
             )
             order = result.scalar_one_or_none()
 

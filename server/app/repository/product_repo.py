@@ -60,6 +60,7 @@ class ProductRepository:
                 "description",
                 "brand",
                 "image_url",
+                "reorder_level",
             ]
             missing_fields = [
                 field for field in required_fields if field not in product_data

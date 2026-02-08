@@ -13,12 +13,13 @@ class Product(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=False)
-    brand = Column(String(255), nullable=False)
-    category = Column(Enum(ProductCategory), nullable=False)
+    description = Column(Text, nullable=True)
+    brand = Column(String(255), nullable=True)
+    category = Column(Enum(ProductCategory), nullable=True)
     price = Column(Float, nullable=False)
-    stock_qty = Column(Integer, nullable=False)
-    image_url = Column(String(255), nullable=False)
+    stock_qty = Column(Integer, nullable=False, default=0)
+    reorder_level = Column(Integer, nullable=False, default=10)
+    image_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
 
