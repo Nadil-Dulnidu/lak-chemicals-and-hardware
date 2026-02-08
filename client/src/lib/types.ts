@@ -72,6 +72,51 @@ export interface LowStockAlert {
   quantity_needed: number;
 }
 
+// ============= Inventory Types =============
+export type MovementType = "IN" | "OUT";
+
+export interface StockMovement {
+  movement_id: number;
+  product_id: string;
+  product_name?: string;
+  movement_type: MovementType;
+  quantity: number;
+  reference?: string;
+  movement_date: string;
+  created_by?: string;
+}
+
+export interface StockMovementCreate {
+  product_id: string;
+  movement_type: MovementType;
+  quantity: number;
+  reference?: string;
+  movement_date?: string;
+}
+
+export interface StockMovementListResponse {
+  movements: StockMovement[];
+  total: number;
+  skip: number;
+  limit: number;
+  has_more: boolean;
+}
+
+export interface InventoryLevel {
+  product_id: string;
+  product_name: string;
+  current_stock: number;
+  total_in: number;
+  total_out: number;
+  last_movement_date?: string;
+}
+
+export interface StockAdjustment {
+  product_id: string;
+  target_quantity: number;
+  reference?: string;
+}
+
 // ============= Cart Types =============
 export interface CartItem {
   cart_item_id: number;
@@ -330,6 +375,26 @@ export interface PaymentIntentCreate {
 
 export interface PaymentIntentResponse {
   client_secret: string;
+}
+
+// ============= Report Config Types =============
+export interface ReportConfig {
+  report_id: number;
+  report_name: string;
+  report_type: ReportType;
+  parameters?: Record<string, unknown>;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  description?: string;
+}
+
+export interface ReportConfigListResponse {
+  reports: ReportConfig[];
+  total: number;
+  skip: number;
+  limit: number;
+  has_more: boolean;
 }
 
 // ============= API Response Types =============

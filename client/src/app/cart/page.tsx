@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { CustomerLayout } from "@/components/layouts/customer-layout";
-import { cartActions, quotationActions, orderActions } from "@/lib/actions";
+import { cartActions, quotationActions } from "@/lib/actions";
 import { Cart } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,14 +12,13 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, Minus, ShoppingCart, FileText, ArrowRight, Package, CreditCard, ShoppingBag } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, FileText, ArrowRight, Package, CreditCard } from "lucide-react";
 
 export default function CartPage() {
   const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
 
   const fetchCart = useCallback(async () => {
@@ -96,35 +95,6 @@ export default function CartPage() {
       toast.error(error instanceof Error ? error.message : "Failed to create quotation");
     } finally {
       setIsRequestingQuote(false);
-    }
-  };
-
-  const placeOrder = async () => {
-    if (!cart) return;
-
-    setIsPlacingOrder(true);
-    try {
-      // Create order directly from cart items
-      const orderItems = cart.items.map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      }));
-
-      await orderActions.create({
-        items: orderItems,
-        payment_method: "Cash on Delivery",
-        notes: "",
-      });
-
-      // Clear the cart after order is placed
-      await cartActions.clear();
-      setCart(null);
-      toast.success("Order placed successfully!");
-      router.push("/orders");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to place order");
-    } finally {
-      setIsPlacingOrder(false);
     }
   };
 
@@ -262,24 +232,9 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
-                {/* Direct Place Order Button */}
-                <Button className="w-full gap-2 bg-orange-500 hover:bg-orange-600 h-12 text-base" onClick={placeOrder} disabled={isPlacingOrder || isRequestingQuote}>
-                  {isPlacingOrder ? (
-                    <>
-                      <Spinner className="h-4 w-4" />
-                      Placing Order...
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag className="h-5 w-5" />
-                      Place Order
-                    </>
-                  )}
-                </Button>
-
                 {/* Checkout Button (for future payment integration) */}
                 <Link href="/checkout" className="w-full">
-                  <Button variant="outline" className="w-full gap-2 border-orange-500/50 text-orange-400 hover:bg-orange-500/10" disabled={isPlacingOrder || isRequestingQuote}>
+                  <Button className="w-full gap-2 bg-orange-500 hover:bg-orange-600 h-12 text-base" disabled={isRequestingQuote}>
                     <CreditCard className="h-4 w-4" />
                     Checkout with Payment
                   </Button>
@@ -291,7 +246,7 @@ export default function CartPage() {
                 </div>
 
                 {/* Request Quotation Option */}
-                <Button variant="ghost" className="w-full gap-2 text-muted-foreground hover:text-foreground" onClick={requestQuotation} disabled={isPlacingOrder || isRequestingQuote}>
+                <Button variant="ghost" className="w-full gap-2 text-muted-foreground hover:text-foreground" onClick={requestQuotation} disabled={isRequestingQuote}>
                   {isRequestingQuote ? (
                     <>
                       <Spinner className="h-4 w-4" />
@@ -311,18 +266,6 @@ export default function CartPage() {
                   </Button>
                 </Link>
               </CardFooter>
-            </Card>
-
-            {/* Payment Info */}
-            <Card className="bg-card/50 border-border/50 mt-4">
-              <CardContent className="p-4">
-                <h4 className="font-medium mb-3 text-sm">We Accept</h4>
-                <div className="flex gap-2 flex-wrap">
-                  <div className="px-3 py-1.5 rounded bg-muted text-xs font-medium">Cash on Delivery</div>
-                  <div className="px-3 py-1.5 rounded bg-muted text-xs font-medium">Bank Transfer</div>
-                  <div className="px-3 py-1.5 rounded bg-muted text-xs font-medium">Card Payment</div>
-                </div>
-              </CardContent>
             </Card>
           </div>
         </div>

@@ -27,6 +27,13 @@ import type {
   InventoryReportData,
   PaymentIntentCreate,
   PaymentIntentResponse,
+  ReportConfig,
+  ReportConfigListResponse,
+  StockMovement,
+  StockMovementCreate,
+  StockMovementListResponse,
+  InventoryLevel,
+  StockAdjustment,
 } from "./types";
 
 // ============= Product Actions =============
@@ -106,6 +113,59 @@ export const cartActions = {
   clear: () =>
     apiClient<void>("/cart", {
       method: "DELETE",
+    }),
+};
+
+// ============= Inventory Actions =============
+export const inventoryActions = {
+  // Record stock movement (IN or OUT)
+  recordMovement: (data: StockMovementCreate) =>
+    apiClient<StockMovement>("/inventory/stock-update", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Get single movement by ID
+  getMovement: (movementId: number) =>
+    apiClient<StockMovement>(`/inventory/movements/${movementId}`),
+
+  // Get all movements with pagination
+  getAllMovements: (skip = 0, limit = 100) =>
+    apiClient<StockMovementListResponse>(`/inventory/movements?skip=${skip}&limit=${limit}`),
+
+  // Filter movements
+  filterMovements: (params: {
+    product_id?: string;
+    movement_type?: "IN" | "OUT";
+    start_date?: string;
+    end_date?: string;
+    skip?: number;
+    limit?: number;
+  }) =>
+    apiClient<StockMovementListResponse>("/inventory/movements/filter", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+
+  // Get movements for a specific product
+  getProductMovements: (productId: string, skip = 0, limit = 100) =>
+    apiClient<StockMovementListResponse>(`/inventory/product/${productId}/movements?skip=${skip}&limit=${limit}`),
+
+  // Get current inventory level for a product
+  getInventoryLevel: (productId: string) =>
+    apiClient<InventoryLevel>(`/inventory/product/${productId}/level`),
+
+  // Delete a movement record
+  deleteMovement: (movementId: number) =>
+    apiClient<void>(`/inventory/movements/${movementId}`, {
+      method: "DELETE",
+    }),
+
+  // Adjust stock to a target quantity
+  adjustStock: (data: StockAdjustment) =>
+    apiClient<StockMovement>("/inventory/adjust", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 };
 
@@ -252,6 +312,60 @@ export const reportActions = {
     apiClient("/reports/generate/low-stock", {
       method: "POST",
       body: JSON.stringify(params || {}),
+    }),
+
+  // ============= Report Configuration CRUD =============
+
+  // Create a saved report configuration
+  create: (data: {
+    report_name: string;
+    report_type: "SALES" | "INVENTORY" | "PRODUCT_PERFORMANCE" | "LOW_STOCK";
+    parameters?: Record<string, unknown>;
+    description?: string;
+  }) =>
+    apiClient<ReportConfig>("/reports", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Get all saved report configurations
+  getAll: (skip = 0, limit = 100) =>
+    apiClient<ReportConfigListResponse>(`/reports?skip=${skip}&limit=${limit}`),
+
+  // Get a single report configuration by ID
+  getById: (id: number) => apiClient<ReportConfig>(`/reports/${id}`),
+
+  // Update a report configuration
+  update: (id: number, data: {
+    report_name?: string;
+    parameters?: Record<string, unknown>;
+    description?: string;
+  }) =>
+    apiClient<ReportConfig>(`/reports/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  // Delete a report configuration
+  delete: (id: number) =>
+    apiClient<void>(`/reports/${id}`, {
+      method: "DELETE",
+    }),
+
+  // Run a saved report configuration
+  run: (id: number, overrides?: {
+    start_date?: string;
+    end_date?: string;
+    category?: string;
+    product_id?: string;
+    group_by?: string;
+    top_n?: number;
+    threshold_percentage?: number;
+    low_stock_only?: boolean;
+  }) =>
+    apiClient<Record<string, unknown>>(`/reports/${id}/run`, {
+      method: "POST",
+      body: JSON.stringify(overrides || {}),
     }),
 };
 
