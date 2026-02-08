@@ -1,0 +1,257 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { AdminLayout } from "@/components/layouts/admin-layout";
+import { orderActions } from "@/lib/actions";
+import { Order } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
+import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Clock, CheckCircle, XCircle, Eye, Package, Filter } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const statusConfig = {
+  PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30", label: "Pending" },
+  COMPLETED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30", label: "Completed" },
+  CANCELLED: { icon: XCircle, color: "bg-red-500/10 text-red-400 border-red-500/30", label: "Cancelled" },
+};
+
+export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const response = await orderActions.getAll(0, 500);
+      setOrders(response.orders);
+    } catch (error) {
+      toast.error("Failed to fetch orders");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const updateOrderStatus = async (orderId: number, status: "PENDING" | "COMPLETED" | "CANCELLED") => {
+    setUpdatingId(orderId);
+    try {
+      await orderActions.updateStatus(orderId, status);
+      toast.success(`Order ${status === "COMPLETED" ? "completed" : status === "CANCELLED" ? "cancelled" : "updated"}`);
+      fetchOrders();
+      setSelectedOrder(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update order");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const filteredOrders = orders.filter((order) => statusFilter === "all" || order.status === statusFilter);
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <Spinner className="h-8 w-8" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Orders</h1>
+            <p className="text-muted-foreground">Manage customer orders</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40 bg-card/50 border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Orders</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {(["PENDING", "COMPLETED", "CANCELLED"] as const).map((status) => {
+            const count = orders.filter((o) => o.status === status).length;
+            const Icon = statusConfig[status].icon;
+            return (
+              <Card key={status} className="bg-card/50 border-border/50">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{statusConfig[status].label}</p>
+                    <p className="text-2xl font-bold">{count}</p>
+                  </div>
+                  <div className={cn("p-3 rounded-xl", statusConfig[status].color.split(" ")[0])}>
+                    <Icon className={cn("h-5 w-5", statusConfig[status].color.split(" ")[1])} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Orders Table */}
+        <Card className="bg-card/50 border-border/50">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left p-4 font-medium text-muted-foreground">Order ID</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Customer</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
+                    <th className="text-right p-4 font-medium text-muted-foreground">Items</th>
+                    <th className="text-right p-4 font-medium text-muted-foreground">Total</th>
+                    <th className="text-center p-4 font-medium text-muted-foreground">Status</th>
+                    <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.map((order) => {
+                    const StatusIcon = statusConfig[order.status].icon;
+                    return (
+                      <tr key={order.order_id} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="p-4">
+                          <span className="font-medium">#{order.order_id}</span>
+                        </td>
+                        <td className="p-4 text-muted-foreground">{order.user_id}</td>
+                        <td className="p-4 text-muted-foreground">{new Date(order.order_date).toLocaleDateString()}</td>
+                        <td className="p-4 text-right">{order.items.length}</td>
+                        <td className="p-4 text-right font-medium">LKR {order.total_amount.toLocaleString()}</td>
+                        <td className="p-4 text-center">
+                          <Badge className={cn("border", statusConfig[order.status].color)}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {statusConfig[order.status].label}
+                          </Badge>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(order)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {order.status === "PENDING" && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-green-400 border-green-500/30 hover:bg-green-500/10"
+                                  onClick={() => updateOrderStatus(order.order_id, "COMPLETED")}
+                                  disabled={updatingId === order.order_id}
+                                >
+                                  Complete
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                                  onClick={() => updateOrderStatus(order.order_id, "CANCELLED")}
+                                  disabled={updatingId === order.order_id}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filteredOrders.length === 0 && <div className="py-12 text-center text-muted-foreground">No orders found</div>}
+          </CardContent>
+        </Card>
+
+        {/* Order Detail Dialog */}
+        <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Order #{selectedOrder?.order_id}</DialogTitle>
+            </DialogHeader>
+            {selectedOrder && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge className={cn("border", statusConfig[selectedOrder.status].color)}>{statusConfig[selectedOrder.status].label}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Customer</span>
+                  <span>{selectedOrder.user_id}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Date</span>
+                  <span>{new Date(selectedOrder.order_date).toLocaleString()}</span>
+                </div>
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="font-medium">Items</h4>
+                  {selectedOrder.items.map((item) => (
+                    <div key={item.order_item_id} className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                          <Package className="h-5 w-5 text-muted-foreground/50" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{item.product_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.quantity} × LKR {item.unit_price.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="font-medium">LKR {item.subtotal.toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between font-bold text-lg">
+                  <span>Total</span>
+                  <span>LKR {selectedOrder.total_amount.toLocaleString()}</span>
+                </div>
+                {selectedOrder.status === "PENDING" && (
+                  <div className="flex gap-3 pt-4">
+                    <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateOrderStatus(selectedOrder.order_id, "COMPLETED")} disabled={updatingId === selectedOrder.order_id}>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Complete Order
+                    </Button>
+                    <Button variant="destructive" className="flex-1" onClick={() => updateOrderStatus(selectedOrder.order_id, "CANCELLED")} disabled={updatingId === selectedOrder.order_id}>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AdminLayout>
+  );
+}
