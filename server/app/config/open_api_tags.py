@@ -31,4 +31,8 @@ openapi_tags = [
         "name": "Reports & Analytics",
         "description": "Operations for generating business intelligence reports including sales, inventory, product performance, and low stock analysis.",
     },
+    {
+        "name": "Payments",
+        "description": "Operations related to payment processing via Stripe, including payment intent creation.",
+    },
 ]

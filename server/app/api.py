@@ -9,6 +9,7 @@ from app.routers.cart_router import router as cart_router
 from app.routers.quotation_router import router as quotation_router
 from app.routers.order_router import router as order_router
 from app.routers.report_router import router as report_router
+from app.routers.stripe_router import router as stripe_router
 from contextlib import asynccontextmanager
 from app.utils.db import create_db_and_tables
 
@@ -31,6 +32,7 @@ app = FastAPI(
     version="1.0.0",
     openapi_tags=openapi_tags,
     lifespan=lifespan,
+    root_path="/api/v1",
 )
 
 app.add_middleware(
@@ -86,6 +88,7 @@ async def health():
     return {"message": "Lak Chemicals and Hardware is healthy"}
 
 
+# Include routers
 app.include_router(product_router)
 app.include_router(supplier_router)
 app.include_router(inventory_router)
@@ -93,3 +96,4 @@ app.include_router(cart_router)
 app.include_router(quotation_router)
 app.include_router(order_router)
 app.include_router(report_router)
+app.include_router(stripe_router)
