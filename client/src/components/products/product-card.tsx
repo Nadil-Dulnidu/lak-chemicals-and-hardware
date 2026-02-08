@@ -10,6 +10,7 @@ import { cartActions } from "@/lib/actions";
 import { toast } from "sonner";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface ProductCardProps {
   product: Product;
@@ -53,9 +54,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   return (
     <Card className="group relative overflow-hidden bg-card/50 border-border/50 hover:border-orange-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/5">
       {/* Product Image */}
-      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-muted/50 to-muted">
+      <div className="relative aspect-square overflow-hidden bg-linear-to-br from-muted/50 to-muted">
         {product.image_url ? (
-          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <Image src={product.image_url} alt={product.name} width={500} height={500} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package className="h-16 w-16 text-muted-foreground/30" />
