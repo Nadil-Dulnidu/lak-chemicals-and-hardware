@@ -25,6 +25,7 @@ from app.schemas.product_schema import (
     ProductCategoryEnum,
 )
 from app.utils.image_upload import upload_image
+from app.security.jwt import verify_clerk_token
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -49,6 +50,7 @@ async def create_product(
     reorder_level: Optional[int] = Form(10),
     image: Optional[UploadFile] = File(None),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Create a new product with optional image upload.
@@ -82,9 +84,11 @@ async def create_product(
             reorder_level=reorder_level or 10,
             image_url=image_url,
         )
+        
+        user_id = user_data.get("sub")
 
         product = await product_service.create_product(
-            session, product_data, user_id="admin"
+            session, product_data, user_id=user_id
         )
 
         if not product:
@@ -159,6 +163,7 @@ async def update_product(
     product_id: uuid.UUID,
     update_data: ProductUpdate,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Update a product.
@@ -193,6 +198,7 @@ async def delete_product(
     product_id: uuid.UUID,
     hard: bool = Query(False, description="Perform hard delete instead of soft delete"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Delete a product.
@@ -271,6 +277,7 @@ async def get_low_stock_alerts(
     threshold: int = Query(10, ge=1, description="Stock quantity threshold"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get products with low stock.

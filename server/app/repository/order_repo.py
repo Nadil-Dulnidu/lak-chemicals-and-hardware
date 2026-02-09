@@ -401,7 +401,7 @@ class OrderRepository:
     async def filter_orders(
         self,
         session: AsyncSession,
-        user_id: str,
+        user_id: Optional[str],
         filters: Dict[str, Any],
         skip: int = 0,
         limit: int = 100,
@@ -420,8 +420,11 @@ class OrderRepository:
             List of filtered Order objects
         """
         try:
-            query = select(Order).where(Order.user_id == user_id)
+            query = select(Order)
             conditions = []
+
+            if user_id:
+                conditions.append(Order.user_id == user_id)
 
             # Status filter
             if "status" in filters and filters["status"]:
@@ -473,7 +476,7 @@ class OrderRepository:
     async def count_orders(
         self,
         session: AsyncSession,
-        user_id: str,
+        user_id: Optional[str],
         filters: Optional[Dict[str, Any]] = None,
     ) -> int:
         """
@@ -488,8 +491,11 @@ class OrderRepository:
             Total count of orders
         """
         try:
-            query = select(func.count(Order.order_id)).where(Order.user_id == user_id)
+            query = select(func.count(Order.order_id))
             conditions = []
+
+            if user_id:
+                conditions.append(Order.user_id == user_id)
 
             if filters:
                 if "status" in filters and filters["status"]:

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,15 +32,26 @@ export default function AdminDashboard() {
     }>
   >([]);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   useEffect(() => {
     const fetchStats = async () => {
+      if (!authToken) return;
       try {
         const [products, orders, quotations, lowStock, salesSummary] = await Promise.all([
           productActions.getAll(0, 1),
-          orderActions.getAll(0, 5),
-          quotationActions.getAll(0, 100),
-          productActions.getLowStockAlerts(10, 100),
-          salesActions.getSummary({}),
+          orderActions.getAll(0, 5, authToken),
+          quotationActions.getAll(0, 100, authToken),
+          productActions.getLowStockAlerts(10, 100, authToken),
+          salesActions.getSummary({}, authToken),
         ]);
 
         const pendingOrders = orders.orders.filter((o) => o.status === "PENDING").length;
@@ -62,8 +74,10 @@ export default function AdminDashboard() {
       }
     };
 
-    fetchStats();
-  }, []);
+    if (authToken !== null) {
+      fetchStats();
+    }
+  }, [authToken]);
 
   if (isLoading) {
     return (

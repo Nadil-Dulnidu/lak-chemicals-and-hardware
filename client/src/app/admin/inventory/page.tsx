@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { productActions, inventoryActions } from "@/lib/actions";
 import { LowStockAlert, Product, StockMovement, StockMovementListResponse } from "@/lib/types";
@@ -61,6 +62,16 @@ export default function AdminInventoryPage() {
   const [selectedAlert, setSelectedAlert] = useState<LowStockAlert | null>(null);
   const [newStock, setNewStock] = useState(0);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   // Load data on mount
   useEffect(() => {
     loadProducts();
@@ -76,16 +87,20 @@ export default function AdminInventoryPage() {
   };
 
   const loadMovements = useCallback(async () => {
+    if (!authToken) return;
     setIsLoadingMovements(true);
     try {
       let response: StockMovementListResponse;
       if (movementFilter === "all") {
-        response = await inventoryActions.getAllMovements(0, 100);
+        response = await inventoryActions.getAllMovements(0, 100, authToken);
       } else {
-        response = await inventoryActions.filterMovements({
-          movement_type: movementFilter,
-          limit: 100,
-        });
+        response = await inventoryActions.filterMovements(
+          {
+            movement_type: movementFilter,
+            limit: 100,
+          },
+          authToken,
+        );
       }
       setMovements(response.movements);
       setMovementsTotal(response.total);
@@ -95,27 +110,32 @@ export default function AdminInventoryPage() {
     } finally {
       setIsLoadingMovements(false);
     }
-  }, [movementFilter]);
+  }, [movementFilter, authToken]);
 
   useEffect(() => {
-    loadMovements();
-  }, [loadMovements]);
+    if (authToken !== null) {
+      loadMovements();
+    }
+  }, [loadMovements, authToken]);
 
   const loadAlerts = useCallback(async () => {
+    if (!authToken) return;
     setIsLoadingAlerts(true);
     try {
-      const response = await productActions.getLowStockAlerts(threshold, 100);
+      const response = await productActions.getLowStockAlerts(threshold, 100, authToken);
       setAlerts(response);
     } catch {
       toast.error("Failed to fetch low stock alerts");
     } finally {
       setIsLoadingAlerts(false);
     }
-  }, [threshold]);
+  }, [threshold, authToken]);
 
   useEffect(() => {
-    loadAlerts();
-  }, [loadAlerts]);
+    if (authToken !== null) {
+      loadAlerts();
+    }
+  }, [loadAlerts, authToken]);
 
   const handleRecordMovement = async () => {
     if (!selectedProductId || quantity <= 0) {
@@ -125,12 +145,15 @@ export default function AdminInventoryPage() {
 
     setIsSubmitting(true);
     try {
-      await inventoryActions.recordMovement({
-        product_id: selectedProductId,
-        movement_type: movementType,
-        quantity,
-        reference: reference || undefined,
-      });
+      await inventoryActions.recordMovement(
+        {
+          product_id: selectedProductId,
+          movement_type: movementType,
+          quantity,
+          reference: reference || undefined,
+        },
+        authToken,
+      );
       toast.success(`Stock ${movementType === "IN" ? "added" : "removed"} successfully!`);
       setShowRecordDialog(false);
       resetRecordForm();
@@ -152,11 +175,14 @@ export default function AdminInventoryPage() {
 
     setIsSubmitting(true);
     try {
-      await inventoryActions.adjustStock({
-        product_id: adjustProductId,
-        target_quantity: targetQuantity,
-        reference: adjustReference || undefined,
-      });
+      await inventoryActions.adjustStock(
+        {
+          product_id: adjustProductId,
+          target_quantity: targetQuantity,
+          reference: adjustReference || undefined,
+        },
+        authToken,
+      );
       toast.success("Stock adjusted successfully!");
       setShowAdjustDialog(false);
       resetAdjustForm();
@@ -175,7 +201,7 @@ export default function AdminInventoryPage() {
 
     setIsSubmitting(true);
     try {
-      await productActions.update(selectedAlert.product_id, { stock_qty: newStock });
+      await productActions.update(selectedAlert.product_id, { stock_qty: newStock }, authToken);
       toast.success(`Stock updated for ${selectedAlert.product_name}`);
       setSelectedAlert(null);
       loadAlerts();
@@ -193,7 +219,7 @@ export default function AdminInventoryPage() {
     }
 
     try {
-      await inventoryActions.deleteMovement(movementId);
+      await inventoryActions.deleteMovement(movementId, authToken);
       toast.success("Movement record deleted");
       loadMovements();
     } catch (error) {

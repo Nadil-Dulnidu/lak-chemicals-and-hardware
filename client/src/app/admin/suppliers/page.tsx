@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { supplierActions } from "@/lib/actions";
 import { Supplier, SupplierCreate } from "@/lib/types";
@@ -29,20 +30,33 @@ export default function AdminSuppliersPage() {
     address: "",
   });
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const fetchSuppliers = useCallback(async () => {
+    if (!authToken) return;
     try {
-      const response = await supplierActions.getAll(0, 500);
+      const response = await supplierActions.getAll(0, 500, authToken);
       setSuppliers(response.suppliers);
     } catch (error) {
       toast.error("Failed to fetch suppliers");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
-    fetchSuppliers();
-  }, [fetchSuppliers]);
+    if (authToken !== null) {
+      fetchSuppliers();
+    }
+  }, [fetchSuppliers, authToken]);
 
   const resetForm = () => {
     setFormData({
@@ -76,10 +90,10 @@ export default function AdminSuppliersPage() {
 
     try {
       if (editingSupplier) {
-        await supplierActions.update(editingSupplier.id, formData);
+        await supplierActions.update(editingSupplier.id, formData, authToken);
         toast.success("Supplier updated successfully");
       } else {
-        await supplierActions.create(formData);
+        await supplierActions.create(formData, authToken);
         toast.success("Supplier created successfully");
       }
       setIsDialogOpen(false);
@@ -94,7 +108,7 @@ export default function AdminSuppliersPage() {
     if (!confirm(`Are you sure you want to delete "${supplier.name}"?`)) return;
 
     try {
-      await supplierActions.delete(supplier.id);
+      await supplierActions.delete(supplier.id, authToken);
       toast.success("Supplier deleted successfully");
       fetchSuppliers();
     } catch (error) {

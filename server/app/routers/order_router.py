@@ -15,6 +15,7 @@ from app.schemas.order_schema import (
     SalesFilterParams,
     SalesSummaryResponse,
 )
+from app.security.jwt import verify_clerk_token
 
 router = APIRouter(prefix="/orders", tags=["Orders & Sales"])
 
@@ -24,6 +25,28 @@ sales_service = SalesService()
 
 
 # ============= Order Endpoints =============
+
+
+@router.get(
+    "",
+    response_model=OrderListResponse,
+    summary="Get all orders",
+    description="Get all orders (Admin only)",
+)
+async def get_all_orders(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get all orders.
+
+    - **skip**: Pagination offset (default: 0)
+    - **limit**: Maximum records to return (default: 100, max: 500)
+
+    Returns all orders ordered by date.
+    """
+    return await order_service.get_all_orders(session, skip, limit)
 
 
 @router.post(
@@ -36,7 +59,7 @@ sales_service = SalesService()
 async def create_order(
     order_data: OrderCreate,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Create a new order.
@@ -53,7 +76,7 @@ async def create_order(
     Stock availability will be checked before order creation.
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         order = await order_service.create_order(session, user_id, order_data)
 
@@ -101,16 +124,17 @@ async def get_order(
 
 
 @router.get(
-    "",
+    "/user/{user_id}",
     response_model=OrderListResponse,
     summary="Get user orders",
     description="Get all orders for the current user",
 )
 async def get_user_orders(
+    user_id: str,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get all orders for the current user.
@@ -120,7 +144,6 @@ async def get_user_orders(
 
     Returns orders ordered by order date (most recent first).
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
 
     return await order_service.get_user_orders(session, user_id, skip, limit)
 

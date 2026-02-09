@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { CustomerLayout } from "@/components/layouts/customer-layout";
-import { ProductGrid } from "@/components/products/product-grid";
+import { ProductCard } from "@/components/products/product-card";
 import { productActions } from "@/lib/actions";
-import { Product, ProductCategory } from "@/lib/types";
+import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
-import { Wrench, Paintbrush, Zap, Droplets, FlaskConical, Shield, ArrowRight, Truck, Clock, BadgeCheck, ChevronRight } from "lucide-react";
+import { Paintbrush, Zap, Droplets, FlaskConical, Shield, ArrowRight, Truck, Clock, BadgeCheck, ChevronRight, Wrench } from "lucide-react";
 
 const categories = [
   { icon: FlaskConical, name: "Chemicals", slug: "chemicals", color: "from-purple-500 to-purple-600" },
@@ -136,22 +136,20 @@ export default function HomePage() {
             <div className="flex items-center justify-center py-20">
               <Spinner className="h-8 w-8" />
             </div>
-          ) : (
+          ) : products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {products.slice(0, 4).map((product) => (
-                <Card key={product.id} className="group overflow-hidden bg-card/50 border-border/50 hover:border-orange-500/50 transition-all duration-300">
-                  <div className="relative aspect-square overflow-hidden bg-muted">
-                    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30">
-                      <Wrench className="h-16 w-16" />
-                    </div>
-                  </div>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">{product.brand}</p>
-                    <h3 className="font-semibold line-clamp-2 mb-2 group-hover:text-orange-400 transition-colors">{product.name}</h3>
-                    <p className="text-xl font-bold">LKR {product.price.toLocaleString()}</p>
-                  </CardContent>
-                </Card>
+                <ProductCard key={product.id} product={product} onAddToCart={refreshProducts} />
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No products available at the moment.</p>
+              <Link href="/products">
+                <Button variant="outline" className="mt-4">
+                  Browse All Products
+                </Button>
+              </Link>
             </div>
           )}
         </div>

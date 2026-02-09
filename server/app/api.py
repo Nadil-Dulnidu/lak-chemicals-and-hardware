@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config.open_api_tags import openapi_tags
@@ -12,6 +12,7 @@ from app.routers.report_router import router as report_router
 from app.routers.stripe_router import router as stripe_router
 from contextlib import asynccontextmanager
 from app.utils.db import create_db_and_tables
+from app.security.jwt import verify_clerk_token
 
 
 @asynccontextmanager
@@ -90,10 +91,10 @@ async def health():
 
 # Include routers
 app.include_router(product_router)
-app.include_router(supplier_router)
-app.include_router(inventory_router)
+app.include_router(supplier_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(inventory_router, dependencies=[Depends(verify_clerk_token)])
 app.include_router(cart_router)
-app.include_router(quotation_router)
-app.include_router(order_router)
-app.include_router(report_router)
-app.include_router(stripe_router)
+app.include_router(quotation_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(order_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(report_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(stripe_router, dependencies=[Depends(verify_clerk_token)])

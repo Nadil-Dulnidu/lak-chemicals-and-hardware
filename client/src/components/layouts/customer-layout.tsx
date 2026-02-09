@@ -1,15 +1,24 @@
 "use client";
 
 import { Navbar } from "@/components/navbar";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 interface CustomerLayoutProps {
   children: React.ReactNode;
 }
 
 export function CustomerLayout({ children }: CustomerLayoutProps) {
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
+
+  const isAdmin = () => {
+    if (!isSignedIn) return false;
+    return user?.publicMetadata.role === "ADMIN";
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar isAdmin={false} />
+      <Navbar isAdmin={isAdmin()} />
       <main className="flex-1">{children}</main>
       <footer className="border-t border-border/40 bg-card/50">
         <div className="container mx-auto px-4 py-8">

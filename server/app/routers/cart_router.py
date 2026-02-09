@@ -9,6 +9,7 @@ from app.schemas.cart_schema import (
     CartResponse,
     CartSummaryResponse,
 )
+from app.security.jwt import verify_clerk_token
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
@@ -26,7 +27,7 @@ cart_service = CartService()
 async def add_item_to_cart(
     item_data: CartItemCreate,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Add an item to the cart.
@@ -37,7 +38,7 @@ async def add_item_to_cart(
     If the product already exists in the cart, the quantity will be added to the existing quantity.
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         cart = await cart_service.add_item_to_cart(session, user_id, item_data)
 
@@ -54,14 +55,14 @@ async def add_item_to_cart(
 
 
 @router.get(
-    "",
+    "/items",
     response_model=CartResponse,
     summary="Get cart",
     description="Get the user's shopping cart with all items",
 )
 async def get_cart(
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Get the user's cart with all items and calculated totals.
@@ -73,7 +74,7 @@ async def get_cart(
     - Total items count
     - Total amount
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     cart = await cart_service.get_cart(session, user_id)
 
@@ -94,14 +95,14 @@ async def get_cart(
 )
 async def get_cart_summary(
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get cart summary (total items and amount only).
 
     Useful for displaying cart badge or quick overview.
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     summary = await cart_service.get_cart_summary(session, user_id)
 
@@ -124,7 +125,7 @@ async def update_cart_item(
     cart_item_id: int,
     update_data: CartItemUpdate,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Update cart item quantity.
@@ -133,7 +134,7 @@ async def update_cart_item(
     - **quantity**: New quantity (required, must be positive)
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         cart = await cart_service.update_cart_item(
             session, user_id, cart_item_id, update_data
@@ -160,14 +161,14 @@ async def update_cart_item(
 async def remove_cart_item(
     cart_item_id: int,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Remove an item from the cart.
 
     - **cart_item_id**: Cart item ID to remove
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     success = await cart_service.remove_cart_item(session, user_id, cart_item_id)
 
@@ -188,14 +189,14 @@ async def remove_cart_item(
 )
 async def clear_cart(
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Clear all items from the cart.
 
     This removes all items but keeps the cart itself.
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     success = await cart_service.clear_cart(session, user_id)
 

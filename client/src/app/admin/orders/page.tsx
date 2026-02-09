@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { orderActions } from "@/lib/actions";
 import { Order } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Separator } from "@/components/ui/separator";
@@ -28,25 +29,38 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const fetchOrders = useCallback(async () => {
+    if (!authToken) return;
     try {
-      const response = await orderActions.getAll(0, 500);
+      const response = await orderActions.getAll(0, 500, authToken);
       setOrders(response.orders);
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch orders");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    if (authToken !== null) {
+      fetchOrders();
+    }
+  }, [fetchOrders, authToken]);
 
   const updateOrderStatus = async (orderId: number, status: "PENDING" | "COMPLETED" | "CANCELLED") => {
     setUpdatingId(orderId);
     try {
-      await orderActions.updateStatus(orderId, status);
+      await orderActions.updateStatus(orderId, status, authToken);
       toast.success(`Order ${status === "COMPLETED" ? "completed" : status === "CANCELLED" ? "cancelled" : "updated"}`);
       fetchOrders();
       setSelectedOrder(null);
@@ -192,27 +206,95 @@ export default function AdminOrdersPage() {
 
         {/* Order Detail Dialog */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Order #{selectedOrder?.order_id}</DialogTitle>
             </DialogHeader>
             {selectedOrder && (
               <div className="space-y-4">
+                {/* Status & Date */}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Status</span>
                   <Badge className={cn("border", statusConfig[selectedOrder.status].color)}>{statusConfig[selectedOrder.status].label}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Customer</span>
-                  <span>{selectedOrder.user_id}</span>
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Date</span>
                   <span>{new Date(selectedOrder.order_date).toLocaleString()}</span>
                 </div>
+
                 <Separator />
+
+                {/* Customer Information Section */}
                 <div className="space-y-3">
-                  <h4 className="font-medium">Items</h4>
+                  <h4 className="font-medium flex items-center gap-2">
+                    <span className="text-orange-400">👤</span>
+                    Customer Information
+                  </h4>
+                  <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Name</span>
+                      <span className="font-medium">{selectedOrder.customer_name || "Not provided"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Phone</span>
+                      <span className="font-medium">
+                        {selectedOrder.phone ? (
+                          <a href={`tel:${selectedOrder.phone}`} className="text-orange-400 hover:underline">
+                            {selectedOrder.phone}
+                          </a>
+                        ) : (
+                          "Not provided"
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Address</span>
+                      <span className="font-medium text-right max-w-[200px]">{selectedOrder.address || "Not provided"}</span>
+                    </div>
+                    {selectedOrder.city && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">City</span>
+                        <span className="font-medium">{selectedOrder.city}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Payment & Notes Section */}
+                {(selectedOrder.payment_method || selectedOrder.notes) && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <span className="text-orange-400">💳</span>
+                        Payment & Notes
+                      </h4>
+                      <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                        {selectedOrder.payment_method && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground text-sm">Payment Method</span>
+                            <span className="font-medium">{selectedOrder.payment_method}</span>
+                          </div>
+                        )}
+                        {selectedOrder.notes && (
+                          <div>
+                            <span className="text-muted-foreground text-sm block mb-1">Notes</span>
+                            <p className="text-sm bg-background/50 rounded p-2">{selectedOrder.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+
+                {/* Order Items */}
+                <div className="space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <span className="text-orange-400">📦</span>
+                    Items ({selectedOrder.items.length})
+                  </h4>
                   {selectedOrder.items.map((item) => (
                     <div key={item.order_item_id} className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-3">
@@ -230,11 +312,16 @@ export default function AdminOrdersPage() {
                     </div>
                   ))}
                 </div>
+
                 <Separator />
+
+                {/* Total */}
                 <div className="flex items-center justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>LKR {selectedOrder.total_amount.toLocaleString()}</span>
+                  <span className="text-orange-400">LKR {selectedOrder.total_amount.toLocaleString()}</span>
                 </div>
+
+                {/* Action Buttons */}
                 {selectedOrder.status === "PENDING" && (
                   <div className="flex gap-3 pt-4">
                     <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateOrderStatus(selectedOrder.order_id, "COMPLETED")} disabled={updatingId === selectedOrder.order_id}>

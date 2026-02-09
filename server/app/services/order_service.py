@@ -200,6 +200,55 @@ class OrderService:
                 orders=[], total=0, skip=skip, limit=limit, has_more=False
             )
 
+    async def get_all_orders(
+        self,
+        session: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> OrderListResponse:
+        """
+        Get all orders (admin function).
+
+        Args:
+            session: Database session
+            skip: Number of records to skip
+            limit: Maximum records to return
+
+        Returns:
+            OrderListResponse with all orders
+        """
+        try:
+            # Pass None as user_id to get all orders
+            orders = await self.repo.filter_orders(session, None, {}, skip, limit)
+            total = await self.repo.count_orders(session, None, {})
+
+            order_responses = []
+            for order in orders:
+                response = await self._to_response(order)
+                if response:
+                    order_responses.append(response)
+
+            return OrderListResponse(
+                orders=order_responses,
+                total=total,
+                skip=skip,
+                limit=limit,
+                has_more=skip + len(orders) < total,
+            )
+
+        except Exception as e:
+            self._logger.error(
+                f"Service error getting all orders: {str(e)}",
+                extra=create_owasp_log_context(
+                    user="admin",
+                    action="get_all_orders_error",
+                    location="OrderService.get_all_orders",
+                ),
+            )
+            return OrderListResponse(
+                orders=[], total=0, skip=skip, limit=limit, has_more=False
+            )
+
     async def update_order_status(
         self,
         session: AsyncSession,

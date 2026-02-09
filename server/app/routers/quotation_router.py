@@ -11,11 +11,34 @@ from app.schemas.quotation_schema import (
     QuotationListResponse,
     QuotationFilterParams,
 )
+from app.security.jwt import verify_clerk_token
 
 router = APIRouter(prefix="/quotations", tags=["Quotations"])
 
 # Initialize service
 quotation_service = QuotationService()
+
+
+@router.get(
+    "",
+    response_model=QuotationListResponse,
+    summary="Get all quotations",
+    description="Get all quotations (Admin only)",
+)
+async def get_all_quotations(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get all quotations.
+
+    - **skip**: Pagination offset (default: 0)
+    - **limit**: Maximum records to return (default: 100, max: 500)
+
+    Returns all quotations ordered by date.
+    """
+    return await quotation_service.get_all_quotations(session, skip, limit)
 
 
 @router.post(
@@ -28,7 +51,7 @@ quotation_service = QuotationService()
 async def create_quotation(
     quotation_data: QuotationCreate,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Create a new quotation.
@@ -40,7 +63,7 @@ async def create_quotation(
     Unit prices and subtotals will be calculated automatically based on current product prices.
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         quotation = await quotation_service.create_quotation(
             session, user_id, quotation_data
@@ -108,7 +131,7 @@ async def create_quotation_from_cart(
 async def get_quotation(
     quotation_id: int,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get a quotation by its ID.
@@ -131,16 +154,16 @@ async def get_quotation(
 
 
 @router.get(
-    "",
+    "/user/{user_id}",
     response_model=QuotationListResponse,
     summary="Get user quotations",
     description="Get all quotations for the current user",
 )
 async def get_user_quotations(
+    user_id: str,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
 ):
     """
     Get all quotations for the current user.
@@ -150,8 +173,6 @@ async def get_user_quotations(
 
     Returns quotations ordered by creation date (most recent first).
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
-
     return await quotation_service.get_user_quotations(session, user_id, skip, limit)
 
 

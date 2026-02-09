@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, Package, ShoppingCart, FileText, ClipboardList, BarChart3, Truck, Settings, Menu, X, Wrench, Shield } from "lucide-react";
+import { Home, Package, ShoppingCart, FileText, ClipboardList, BarChart3, Truck, Menu, X, Wrench, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { UserButton, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
@@ -40,12 +41,12 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href={isAdmin ? "/admin" : "/"} className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg shadow-orange-500/25">
-            <Wrench className="h-5 w-5 text-white" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden">
+            <Image src="/LakChemcopy.png" alt="LAK Logo" width={40} height={40} className="object-cover" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg font-bold text-foreground">LAK Hardware</h1>
-            <p className="text-xs text-muted-foreground">Chemicals & Tools</p>
+            <h1 className="text-lg font-bold text-foreground">LAK</h1>
+            <p className="text-xs text-muted-foreground">Chemicals & Hardware</p>
           </div>
         </Link>
 
@@ -72,15 +73,6 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-3">
-          {!isAdmin && (
-            <Link href="/admin">
-              <Button variant="outline" size="sm" className="hidden sm:flex gap-2">
-                <Shield className="h-4 w-4" />
-                Admin
-              </Button>
-            </Link>
-          )}
-
           <SignedIn>
             <UserButton
               afterSignOutUrl="/"

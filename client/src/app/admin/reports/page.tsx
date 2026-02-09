@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { reportActions } from "@/lib/actions";
 import { SalesReportData, InventoryReportData, ReportConfig, ReportType } from "@/lib/types";
@@ -16,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from "sonner";
 import { BarChart3, Package, TrendingUp, AlertTriangle, DollarSign, ShoppingBag, Calendar, Save, Play, Trash2, Edit, Plus, FileText, Clock, BookmarkPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ReportDisplay } from "@/components/reports/report-display";
 
 // Type for dynamic report data
 type ReportData = SalesReportData | InventoryReportData | Record<string, unknown>;
@@ -31,7 +33,18 @@ export default function AdminReportsPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingReport, setEditingReport] = useState<ReportConfig | null>(null);
   const [runReportData, setRunReportData] = useState<ReportData | null>(null);
+  const [runReportType, setRunReportType] = useState<ReportType | null>(null);
   const [runningReportId, setRunningReportId] = useState<number | null>(null);
+
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
 
   // New Report Form State
   const [newReportName, setNewReportName] = useState("");
@@ -61,13 +74,15 @@ export default function AdminReportsPage() {
 
   // Load saved reports on mount
   useEffect(() => {
-    loadSavedReports();
-  }, []);
+    if (authToken !== null) {
+      loadSavedReports();
+    }
+  }, [authToken]);
 
   const loadSavedReports = async () => {
     setIsLoadingSaved(true);
     try {
-      const response = await reportActions.getAll();
+      const response = await reportActions.getAll(0, 100, authToken);
       setSavedReports(response.reports);
     } catch (error) {
       console.error("Failed to load saved reports:", error);
@@ -104,12 +119,15 @@ export default function AdminReportsPage() {
         };
       }
 
-      await reportActions.create({
-        report_name: newReportName,
-        report_type: newReportType,
-        description: newReportDescription || undefined,
-        parameters,
-      });
+      await reportActions.create(
+        {
+          report_name: newReportName,
+          report_type: newReportType,
+          description: newReportDescription || undefined,
+          parameters,
+        },
+        authToken,
+      );
 
       toast.success("Report configuration saved!");
       setShowCreateDialog(false);
@@ -127,11 +145,15 @@ export default function AdminReportsPage() {
 
     setIsLoading(true);
     try {
-      await reportActions.update(editingReport.report_id, {
-        report_name: newReportName,
-        description: newReportDescription || undefined,
-        parameters: newReportParams as Record<string, unknown>,
-      });
+      await reportActions.update(
+        editingReport.report_id,
+        {
+          report_name: newReportName,
+          description: newReportDescription || undefined,
+          parameters: newReportParams as Record<string, unknown>,
+        },
+        authToken,
+      );
 
       toast.success("Report updated!");
       setShowEditDialog(false);
@@ -149,7 +171,7 @@ export default function AdminReportsPage() {
     if (!confirm("Are you sure you want to delete this report configuration?")) return;
 
     try {
-      await reportActions.delete(id);
+      await reportActions.delete(id, authToken);
       toast.success("Report deleted");
       loadSavedReports();
     } catch (error) {
@@ -160,9 +182,11 @@ export default function AdminReportsPage() {
   const runSavedReport = async (report: ReportConfig) => {
     setRunningReportId(report.report_id);
     setRunReportData(null);
+    setRunReportType(null);
     try {
-      const data = await reportActions.run(report.report_id);
+      const data = await reportActions.run(report.report_id, undefined, authToken);
       setRunReportData(data);
+      setRunReportType(report.report_type);
       toast.success(`Report "${report.report_name}" generated!`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to run report");
@@ -191,11 +215,14 @@ export default function AdminReportsPage() {
     if (!name) return;
 
     try {
-      await reportActions.create({
-        report_name: name,
-        report_type: type,
-        parameters: params,
-      });
+      await reportActions.create(
+        {
+          report_name: name,
+          report_type: type,
+          parameters: params,
+        },
+        authToken,
+      );
       toast.success("Report configuration saved!");
       loadSavedReports();
     } catch (error) {
@@ -211,11 +238,14 @@ export default function AdminReportsPage() {
 
     setIsLoading(true);
     try {
-      const report = await reportActions.generateSales({
-        start_date: salesStartDate,
-        end_date: salesEndDate,
-        group_by: salesGroupBy,
-      });
+      const report = await reportActions.generateSales(
+        {
+          start_date: salesStartDate,
+          end_date: salesEndDate,
+          group_by: salesGroupBy,
+        },
+        authToken,
+      );
       setSalesReport(report);
       toast.success("Sales report generated");
     } catch (error) {
@@ -228,9 +258,12 @@ export default function AdminReportsPage() {
   const generateInventoryReport = async () => {
     setIsLoading(true);
     try {
-      const report = await reportActions.generateInventory({
-        low_stock_only: inventoryLowStockOnly,
-      });
+      const report = await reportActions.generateInventory(
+        {
+          low_stock_only: inventoryLowStockOnly,
+        },
+        authToken,
+      );
       setInventoryReport(report);
       toast.success("Inventory report generated");
     } catch (error) {
@@ -248,11 +281,14 @@ export default function AdminReportsPage() {
 
     setIsLoading(true);
     try {
-      const report = await reportActions.generateProductPerformance({
-        start_date: perfStartDate,
-        end_date: perfEndDate,
-        top_n: perfTopN,
-      });
+      const report = await reportActions.generateProductPerformance(
+        {
+          start_date: perfStartDate,
+          end_date: perfEndDate,
+          top_n: perfTopN,
+        },
+        authToken,
+      );
       setPerfReport(report as Record<string, unknown>);
       toast.success("Performance report generated");
     } catch (error) {
@@ -265,9 +301,12 @@ export default function AdminReportsPage() {
   const generateLowStockReport = async () => {
     setIsLoading(true);
     try {
-      const report = await reportActions.generateLowStock({
-        threshold_percentage: lowStockThreshold,
-      });
+      const report = await reportActions.generateLowStock(
+        {
+          threshold_percentage: lowStockThreshold,
+        },
+        authToken,
+      );
       setLowStockReport(report as Record<string, unknown>);
       toast.success("Low stock report generated");
     } catch (error) {
@@ -477,15 +516,23 @@ export default function AdminReportsPage() {
             )}
 
             {/* Run Report Results */}
-            {runReportData && (
-              <Card className="bg-card/50 border-border/50 mt-6">
-                <CardHeader>
-                  <CardTitle className="text-lg">Report Results</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="bg-background/50 p-4 rounded-lg overflow-auto text-sm max-h-[400px]">{JSON.stringify(runReportData, null, 2)}</pre>
-                </CardContent>
-              </Card>
+            {runReportData && runReportType && (
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Report Results</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setRunReportData(null);
+                      setRunReportType(null);
+                    }}
+                  >
+                    Clear Results
+                  </Button>
+                </div>
+                <ReportDisplay reportType={runReportType} data={runReportData as Record<string, unknown>} />
+              </div>
             )}
           </TabsContent>
 

@@ -292,7 +292,7 @@ class QuotationRepository:
     async def filter_quotations(
         self,
         session: AsyncSession,
-        user_id: str,
+        user_id: Optional[str],
         filters: Dict[str, Any],
         skip: int = 0,
         limit: int = 100,
@@ -314,8 +314,11 @@ class QuotationRepository:
             List of filtered Quotation objects
         """
         try:
-            query = select(Quotation).where(Quotation.user_id == user_id)
+            query = select(Quotation)
             conditions = []
+
+            if user_id:
+                conditions.append(Quotation.user_id == user_id)
 
             # Status filter
             if "status" in filters and filters["status"]:
@@ -367,7 +370,7 @@ class QuotationRepository:
     async def count_quotations(
         self,
         session: AsyncSession,
-        user_id: str,
+        user_id: Optional[str],
         filters: Optional[Dict[str, Any]] = None,
     ) -> int:
         """
@@ -382,10 +385,11 @@ class QuotationRepository:
             Total count of quotations
         """
         try:
-            query = select(func.count(Quotation.quotation_id)).where(
-                Quotation.user_id == user_id
-            )
+            query = select(func.count(Quotation.quotation_id))
             conditions = []
+
+            if user_id:
+                conditions.append(Quotation.user_id == user_id)
 
             if filters:
                 if "status" in filters and filters["status"]:

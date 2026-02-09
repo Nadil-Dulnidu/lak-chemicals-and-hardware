@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { ShoppingCart, Package, ArrowLeft, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@clerk/nextjs";
 
 const categoryColors: Record<string, string> = {
   chemicals: "bg-purple-500/10 text-purple-400 border-purple-500/30",
@@ -39,6 +40,16 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -59,10 +70,13 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
     setIsAddingToCart(true);
     try {
-      await cartActions.addItem({
-        product_id: product.id,
-        quantity,
-      });
+      await cartActions.addItem(
+        {
+          product_id: product.id,
+          quantity,
+        },
+        authToken,
+      );
       toast.success(`${quantity} × ${product.name} added to cart!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add to cart");

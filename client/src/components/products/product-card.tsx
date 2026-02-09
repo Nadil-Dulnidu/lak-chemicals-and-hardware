@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "@clerk/nextjs";
+import { useEffect } from "react";
 
 interface ProductCardProps {
   product: Product;
@@ -32,13 +34,26 @@ const categoryColors: Record<string, string> = {
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [isLoading, setIsLoading] = useState(false);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const handleAddToCart = async () => {
     setIsLoading(true);
     try {
-      await cartActions.addItem({
-        product_id: product.id,
-        quantity: 1,
-      });
+      await cartActions.addItem(
+        {
+          product_id: product.id,
+          quantity: 1,
+        },
+        authToken,
+      );
       toast.success(`${product.name} added to cart!`);
       onAddToCart?.();
     } catch (error) {

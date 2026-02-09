@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { ClipboardList, Clock, CheckCircle, XCircle, ArrowRight, ChevronDown, ChevronUp, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 const statusConfig = {
   PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30", label: "Processing" },
@@ -25,16 +26,30 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  const { user } = useUser();
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const fetchOrders = useCallback(async () => {
+    if (!authToken || !user?.id) return;
     try {
-      const response = await orderActions.getAll();
+      const userId = user?.id;
+      const response = await orderActions.getByUserId(userId, 0, 100, authToken);
       setOrders(response.orders);
     } catch (error) {
       toast.error("Failed to load orders");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id, authToken]);
 
   useEffect(() => {
     fetchOrders();

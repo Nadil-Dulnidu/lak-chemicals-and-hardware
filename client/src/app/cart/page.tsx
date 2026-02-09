@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, Plus, Minus, ShoppingCart, FileText, ArrowRight, Package, CreditCard } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 
 export default function CartPage() {
   const router = useRouter();
@@ -21,9 +22,19 @@ export default function CartPage() {
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const fetchCart = useCallback(async () => {
     try {
-      const response = await cartActions.get();
+      const response = await cartActions.get(authToken);
       setCart(response);
     } catch (error) {
       // Cart might not exist yet
@@ -31,7 +42,7 @@ export default function CartPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
     fetchCart();
@@ -42,7 +53,7 @@ export default function CartPage() {
 
     setUpdatingItems((prev) => new Set(prev).add(cartItemId));
     try {
-      const response = await cartActions.updateItem(cartItemId, { quantity: newQuantity });
+      const response = await cartActions.updateItem(cartItemId, { quantity: newQuantity }, authToken);
       setCart(response);
       toast.success("Cart updated");
     } catch (error) {
@@ -59,7 +70,7 @@ export default function CartPage() {
   const removeItem = async (cartItemId: number) => {
     setUpdatingItems((prev) => new Set(prev).add(cartItemId));
     try {
-      await cartActions.removeItem(cartItemId);
+      await cartActions.removeItem(cartItemId, authToken);
       await fetchCart();
       toast.success("Item removed from cart");
     } catch (error) {
@@ -75,7 +86,7 @@ export default function CartPage() {
 
   const clearCart = async () => {
     try {
-      await cartActions.clear();
+      await cartActions.clear(authToken);
       setCart(null);
       toast.success("Cart cleared");
     } catch (error) {
@@ -86,8 +97,8 @@ export default function CartPage() {
   const requestQuotation = async () => {
     setIsRequestingQuote(true);
     try {
-      await quotationActions.createFromCart({ notes: "" });
-      await cartActions.clear();
+      await quotationActions.createFromCart({ notes: "" }, authToken);
+      await cartActions.clear(authToken);
       setCart(null);
       toast.success("Quotation request submitted! We'll review and get back to you.");
       router.push("/quotations");

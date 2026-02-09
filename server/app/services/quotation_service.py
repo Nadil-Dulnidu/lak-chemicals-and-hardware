@@ -292,6 +292,57 @@ class QuotationService:
                 quotations=[], total=0, skip=skip, limit=limit, has_more=False
             )
 
+    async def get_all_quotations(
+        self,
+        session: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> QuotationListResponse:
+        """
+        Get all quotations (admin function).
+
+        Args:
+            session: Database session
+            skip: Number of records to skip
+            limit: Maximum records to return
+
+        Returns:
+            QuotationListResponse with all quotations
+        """
+        try:
+            # Pass None as user_id to get all quotations
+            quotations = await self.repo.filter_quotations(
+                session, None, {}, skip, limit
+            )
+            total = await self.repo.count_quotations(session, None, {})
+
+            quotation_responses = []
+            for quotation in quotations:
+                response = await self._to_response(quotation)
+                if response:
+                    quotation_responses.append(response)
+
+            return QuotationListResponse(
+                quotations=quotation_responses,
+                total=total,
+                skip=skip,
+                limit=limit,
+                has_more=skip + len(quotations) < total,
+            )
+
+        except Exception as e:
+            self._logger.error(
+                f"Service error getting all quotations: {str(e)}",
+                extra=create_owasp_log_context(
+                    user="admin",
+                    action="get_all_quotations_error",
+                    location="QuotationService.get_all_quotations",
+                ),
+            )
+            return QuotationListResponse(
+                quotations=[], total=0, skip=skip, limit=limit, has_more=False
+            )
+
     async def update_quotation_status(
         self,
         session: AsyncSession,

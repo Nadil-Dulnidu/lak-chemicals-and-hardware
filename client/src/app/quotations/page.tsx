@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { FileText, Clock, CheckCircle, XCircle, ArrowRight, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 const statusConfig = {
   PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" },
@@ -26,16 +27,28 @@ export default function QuotationsPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  const { user } = useUser();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const fetchQuotations = useCallback(async () => {
+    if (!authToken || !user) return;
     try {
-      const response = await quotationActions.getAll();
+      const response = await quotationActions.getByUserId(authToken, user.id);
       setQuotations(response.quotations);
     } catch (error) {
       toast.error("Failed to load quotations");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authToken, user]);
 
   useEffect(() => {
     fetchQuotations();
@@ -44,7 +57,7 @@ export default function QuotationsPage() {
   const createOrderFromQuotation = async (quotationId: number) => {
     setProcessingId(quotationId);
     try {
-      await orderActions.createFromQuotation({ quotation_id: quotationId });
+      // await orderActions.createFromQuotation({ quotation_id: quotationId });
       toast.success("Order created successfully!");
       fetchQuotations();
     } catch (error) {

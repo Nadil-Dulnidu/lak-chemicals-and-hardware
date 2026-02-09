@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { quotationActions } from "@/lib/actions";
 import { Quotation } from "@/lib/types";
@@ -28,25 +29,38 @@ export default function AdminQuotationsPage() {
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const fetchQuotations = useCallback(async () => {
+    if (!authToken) return;
     try {
-      const response = await quotationActions.getAll(0, 500);
+      const response = await quotationActions.getAll(0, 500, authToken);
       setQuotations(response.quotations);
     } catch (error) {
       toast.error("Failed to fetch quotations");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
-    fetchQuotations();
-  }, [fetchQuotations]);
+    if (authToken !== null) {
+      fetchQuotations();
+    }
+  }, [fetchQuotations, authToken]);
 
   const updateQuotationStatus = async (quotationId: number, status: "APPROVED" | "REJECTED") => {
     setUpdatingId(quotationId);
     try {
-      await quotationActions.updateStatus(quotationId, status);
+      await quotationActions.updateStatus(quotationId, status, authToken);
       toast.success(`Quotation ${status.toLowerCase()}`);
       fetchQuotations();
       setSelectedQuotation(null);

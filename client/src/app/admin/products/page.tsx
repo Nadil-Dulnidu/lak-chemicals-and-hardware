@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "sonner";
 import { Plus, Search, MoreVertical, Pencil, Trash2, Package, Truck, ImagePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@clerk/nextjs";
 
 const categories: ProductCategory[] = ["chemicals", "hardware", "tools", "paints", "electrical", "plumbing", "building_materials", "safety_equipment", "other"];
 
@@ -51,6 +52,15 @@ export default function AdminProductsPage() {
     description: "",
     reorder_level: 10,
   });
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -65,12 +75,12 @@ export default function AdminProductsPage() {
 
   const fetchSuppliers = useCallback(async () => {
     try {
-      const response = await supplierActions.getAll(0, 500);
+      const response = await supplierActions.getAll(0, 500, authToken);
       setSuppliers(response.suppliers.filter((s) => s.is_active));
     } catch {
       // Suppliers fetch failed, continue without suppliers
     }
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
     fetchProducts();
@@ -139,11 +149,11 @@ export default function AdminProductsPage() {
       let productId: string;
 
       if (editingProduct) {
-        await productActions.update(editingProduct.id, formData);
+        await productActions.update(editingProduct.id, formData, authToken);
         productId = editingProduct.id;
         toast.success("Product updated successfully");
       } else {
-        const newProduct = await productActions.create(formData, imageFile || undefined);
+        const newProduct = await productActions.create(formData, imageFile || undefined, authToken);
         productId = newProduct.id;
         toast.success("Product created successfully");
       }
@@ -151,7 +161,7 @@ export default function AdminProductsPage() {
       // Link to supplier if one is selected
       if (selectedSupplierId) {
         try {
-          await supplierActions.linkProduct(selectedSupplierId, productId, supplyPrice);
+          await supplierActions.linkProduct(selectedSupplierId, productId, supplyPrice, authToken);
           toast.success("Product linked to supplier");
         } catch {
           toast.error("Product saved but failed to link to supplier");
@@ -170,7 +180,7 @@ export default function AdminProductsPage() {
     if (!confirm(`Are you sure you want to delete "${product.name}"?`)) return;
 
     try {
-      await productActions.delete(product.id);
+      await productActions.delete(product.id, false, authToken);
       toast.success("Product deleted successfully");
       fetchProducts();
     } catch (error) {
