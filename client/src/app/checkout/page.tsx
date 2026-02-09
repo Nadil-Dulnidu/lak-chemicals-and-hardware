@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, ArrowLeft, Package, CreditCard, Banknote, Building2, CheckCircle, Shield, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@clerk/nextjs";
 
 type PaymentMethod = "cash" | "card" | "bank";
 
@@ -33,16 +34,27 @@ export default function CheckoutPage() {
     city: "",
   });
 
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
   const fetchCart = useCallback(async () => {
+    if (!authToken) return;
     try {
-      const response = await cartActions.get();
+      const response = await cartActions.get(authToken);
       setCart(response);
     } catch (error) {
       setCart(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
     fetchCart();
@@ -70,20 +82,23 @@ export default function CheckoutPage() {
         quantity: item.quantity,
       }));
 
-      const order = await orderActions.create({
-        items: orderItems,
-        payment_method: selectedPayment === "cash" ? "Cash on Delivery" : selectedPayment === "card" ? "Card" : "Bank Transfer",
-        notes: notes || undefined,
-        customer_name: shippingAddress.name,
-        phone: shippingAddress.phone,
-        address: shippingAddress.address,
-        city: shippingAddress.city || undefined,
-      });
+      const order = await orderActions.create(
+        {
+          items: orderItems,
+          payment_method: selectedPayment === "cash" ? "Cash on Delivery" : selectedPayment === "card" ? "Card" : "Bank Transfer",
+          notes: notes || undefined,
+          customer_name: shippingAddress.name,
+          phone: shippingAddress.phone,
+          address: shippingAddress.address,
+          city: shippingAddress.city || undefined,
+        },
+        authToken,
+      );
 
       // If card payment, redirect to Stripe
       if (selectedPayment === "card") {
         try {
-          const checkout = await paymentActions.createCheckout(order.order_id);
+          const checkout = await paymentActions.createCheckout(order.order_id, authToken);
           if (checkout.checkout_url) {
             window.location.href = checkout.checkout_url;
             return;
@@ -95,7 +110,7 @@ export default function CheckoutPage() {
       }
 
       // Clear cart
-      await cartActions.clear();
+      await cartActions.clear(authToken);
       toast.success("Order placed successfully!");
       router.push("/orders");
     } catch (error) {
@@ -250,7 +265,7 @@ export default function CheckoutPage() {
                   <CardTitle className="text-lg">Order Notes (Optional)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any special instructions for your order..." className="min-h-[100px]" />
+                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any special instructions for your order..." className="min-h-25" />
                 </CardContent>
               </Card>
             </div>
@@ -266,7 +281,7 @@ export default function CheckoutPage() {
                   <div className="space-y-3 max-h-60 overflow-y-auto scrollbar-thin">
                     {cart.items.map((item) => (
                       <div key={item.cart_item_id} className="flex gap-3">
-                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
                           <Package className="h-5 w-5 text-muted-foreground/30" />
                         </div>
                         <div className="flex-1 min-w-0">

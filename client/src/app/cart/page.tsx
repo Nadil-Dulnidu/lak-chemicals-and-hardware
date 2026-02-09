@@ -164,7 +164,7 @@ export default function CartPage() {
                 <CardContent className="p-4">
                   <div className="flex gap-4">
                     {/* Product Image */}
-                    <Link href={`/products/${item.product_id}`} className="flex-shrink-0">
+                    <Link href={`/products/${item.product_id}`} className="shrink-0">
                       <div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
                         <Package className="h-8 w-8 text-muted-foreground/30" />
                       </div>
