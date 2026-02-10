@@ -76,6 +76,9 @@ class QuotationUpdateStatus(BaseModel):
     """Schema for updating quotation status"""
 
     status: QuotationStatusEnum = Field(..., description="New status")
+    discount_amount: Optional[Decimal] = Field(
+        None, ge=0, description="Discount amount (if approved)"
+    )
 
 
 class QuotationResponse(BaseModel):
@@ -85,6 +88,7 @@ class QuotationResponse(BaseModel):
     user_id: str
     status: str
     total_amount: Decimal
+    discount_amount: Decimal = Field(default=0.00)
     created_at: datetime
     updated_at: Optional[datetime] = None
     notes: Optional[str] = None
@@ -130,3 +134,14 @@ class QuotationSummaryResponse(BaseModel):
     total_amount: Decimal
     total_items: int
     created_at: datetime
+
+
+class OrderFromQuotation(BaseModel):
+    """Schema for creating order from quotation"""
+
+    payment_method: Optional[str] = Field(None, description="Payment method")
+    customer_name: Optional[str] = Field(None, description="Customer name")
+    phone: Optional[str] = Field(None, description="Phone number")
+    address: Optional[str] = Field(None, description="Shipping address")
+    city: Optional[str] = Field(None, description="City")
+    notes: Optional[str] = Field(None, description="Additional notes")

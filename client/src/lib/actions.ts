@@ -11,9 +11,11 @@ import type {
   CartItemCreate,
   CartItemUpdate,
   CartSummary,
+  // Update file: c:\nadil-dulnidu\lak-chemicals-and-hardware\client\src\lib\actions.ts
   Quotation,
   QuotationCreate,
   QuotationFromCart,
+  OrderFromQuotation,
   QuotationListResponse,
   Order,
   OrderCreate,
@@ -204,10 +206,18 @@ export const quotationActions = {
       token,
     }),
 
-  updateStatus: (id: number, status: "PENDING" | "APPROVED" | "REJECTED", token?: string | null) =>
+  updateStatus: (id: number, status: "PENDING" | "APPROVED" | "REJECTED", discountAmount?: number, token?: string | null) =>
     apiClient<Quotation>(`/quotations/${id}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, discount_amount: discountAmount }),
+      token,
+    }),
+
+  // Update file: c:\nadil-dulnidu\lak-chemicals-and-hardware\client\src\lib\actions.ts
+  createOrder: (id: number, data: OrderFromQuotation, token?: string | null) =>
+    apiClient<Order>(`/quotations/${id}/create-order`, {
+      method: "POST",
+      body: JSON.stringify(data),
       token,
     }),
 

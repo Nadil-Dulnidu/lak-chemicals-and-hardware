@@ -25,6 +25,7 @@ class Quotation(Base):
     total_amount = Column(Numeric(10, 2), nullable=False, default=0.00)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    discount_amount = Column(Numeric(10, 2), nullable=True, default=0.00)
     notes = Column(String(500), nullable=True)
 
     # Relationship to QuotationItem

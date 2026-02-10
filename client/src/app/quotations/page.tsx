@@ -1,8 +1,9 @@
+// Update file: c:\nadil-dulnidu\lak-chemicals-and-hardware\client\src\app\quotations\page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { CustomerLayout } from "@/components/layouts/customer-layout";
-import { quotationActions, orderActions } from "@/lib/actions";
+import { quotationActions } from "@/lib/actions";
 import { Quotation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,16 +17,15 @@ import { cn } from "@/lib/utils";
 import { useAuth, useUser } from "@clerk/nextjs";
 
 const statusConfig = {
-  PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" },
-  APPROVED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30" },
-  REJECTED: { icon: XCircle, color: "bg-red-500/10 text-red-400 border-red-500/30" },
+  PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30", label: "Pending" },
+  APPROVED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30", label: "Approved" },
+  REJECTED: { icon: XCircle, color: "bg-red-500/10 text-red-400 border-red-500/30", label: "Rejected" },
 };
 
 export default function QuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [processingId, setProcessingId] = useState<number | null>(null);
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const { getToken } = useAuth();
@@ -44,6 +44,8 @@ export default function QuotationsPage() {
       const response = await quotationActions.getByUserId(authToken, user.id);
       setQuotations(response.quotations);
     } catch (error) {
+      // Suppressing the unused variable error
+      console.error(error);
       toast.error("Failed to load quotations");
     } finally {
       setIsLoading(false);
@@ -53,19 +55,6 @@ export default function QuotationsPage() {
   useEffect(() => {
     fetchQuotations();
   }, [fetchQuotations]);
-
-  const createOrderFromQuotation = async (quotationId: number) => {
-    setProcessingId(quotationId);
-    try {
-      // await orderActions.createFromQuotation({ quotation_id: quotationId });
-      toast.success("Order created successfully!");
-      fetchQuotations();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create order");
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -111,6 +100,7 @@ export default function QuotationsPage() {
           {quotations.map((quotation) => {
             const StatusIcon = statusConfig[quotation.status].icon;
             const isExpanded = expandedId === quotation.quotation_id;
+            const finalTotal = quotation.total_amount - (quotation.discount_amount || 0);
 
             return (
               <Card key={quotation.quotation_id} className="bg-card/50 border-border/50">
@@ -120,11 +110,20 @@ export default function QuotationsPage() {
                       <CardTitle className="text-lg">Quotation #{quotation.quotation_id}</CardTitle>
                       <Badge className={cn("border", statusConfig[quotation.status].color)}>
                         <StatusIcon className="h-3 w-3 mr-1" />
-                        {quotation.status}
+                        {statusConfig[quotation.status].label}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold">LKR {quotation.total_amount.toLocaleString()}</span>
+                      <div className="text-right">
+                        {quotation.discount_amount && quotation.discount_amount > 0 ? (
+                          <>
+                            <span className="text-sm line-through text-muted-foreground block">LKR {quotation.total_amount.toLocaleString()}</span>
+                            <span className="text-lg font-bold text-green-500">LKR {finalTotal.toLocaleString()}</span>
+                          </>
+                        ) : (
+                          <span className="text-lg font-bold">LKR {quotation.total_amount.toLocaleString()}</span>
+                        )}
+                      </div>
                       <Button variant="ghost" size="icon" onClick={() => setExpandedId(isExpanded ? null : quotation.quotation_id)}>
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </Button>
@@ -155,16 +154,21 @@ export default function QuotationsPage() {
                       ))}
                     </div>
 
+                    {quotation.discount_amount && quotation.discount_amount > 0 && (
+                      <div className="flex justify-between items-center py-2 border-t border-border/50 mb-4 text-green-500">
+                        <span className="font-medium">Discount Applied</span>
+                        <span className="font-bold">- LKR {quotation.discount_amount.toLocaleString()}</span>
+                      </div>
+                    )}
+
                     {/* Actions */}
                     {quotation.status === "APPROVED" && (
-                      <Button
-                        className="w-full gap-2 bg-orange-500 hover:bg-orange-600"
-                        onClick={() => createOrderFromQuotation(quotation.quotation_id)}
-                        disabled={processingId === quotation.quotation_id}
-                      >
-                        <ShoppingBag className="h-4 w-4" />
-                        {processingId === quotation.quotation_id ? "Creating Order..." : "Place Order"}
-                      </Button>
+                      <Link href={`/checkout?quotationId=${quotation.quotation_id}`}>
+                        <Button className="w-full gap-2 bg-orange-500 hover:bg-orange-600">
+                          <ShoppingBag className="h-4 w-4" />
+                          Place Order
+                        </Button>
+                      </Link>
                     )}
                   </CardContent>
                 )}

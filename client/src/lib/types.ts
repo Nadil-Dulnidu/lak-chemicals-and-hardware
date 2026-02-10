@@ -165,6 +165,7 @@ export interface Quotation {
   status: QuotationStatus;
   total_amount: number;
   notes?: string;
+  discount_amount?: number;
   created_at: string;
   items: QuotationItem[];
 }
@@ -176,6 +177,16 @@ export interface QuotationCreate {
 
 export interface QuotationFromCart {
   notes?: string;
+}
+
+// Update file: c:\nadil-dulnidu\lak-chemicals-and-hardware\client\src\lib\types.ts
+export interface OrderFromQuotation {
+  payment_method?: string;
+  notes?: string;
+  customer_name?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
 }
 
 export interface QuotationListResponse {

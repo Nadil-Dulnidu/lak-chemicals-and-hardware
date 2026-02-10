@@ -134,7 +134,7 @@ async def get_user_orders(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token),
+    
 ):
     """
     Get all orders for the current user.
@@ -157,7 +157,7 @@ async def get_user_orders(
 async def filter_orders(
     filter_params: OrderFilterParams,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token)  # Add authentication later
 ):
     """
     Filter orders based on criteria.
@@ -168,7 +168,7 @@ async def filter_orders(
     - **skip**: Pagination offset
     - **limit**: Maximum records to return
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")  # Replace with actual user_id from authentication
 
     return await order_service.filter_orders(session, user_id, filter_params)
 
@@ -183,7 +183,7 @@ async def update_order_status(
     order_id: int,
     status_data: OrderUpdateStatus,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Update order status.
@@ -202,7 +202,7 @@ async def update_order_status(
     - Sales records are generated for analytics
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")  # Replace with actual user_id from authentication
 
         order = await order_service.update_order_status(
             session, order_id, status_data, user_id
@@ -229,7 +229,7 @@ async def update_order_status(
 async def delete_order(
     order_id: int,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Delete an order.
@@ -241,7 +241,7 @@ async def delete_order(
     Only the order owner can delete it.
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")  # Replace with actual user_id from authentication
 
         success = await order_service.delete_order(session, order_id, user_id)
 
@@ -269,6 +269,7 @@ async def delete_order(
 async def get_order_sales(
     order_id: int,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Get all sales records for a specific order.
@@ -293,6 +294,7 @@ async def get_all_sales(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Get all sales records.
@@ -315,6 +317,7 @@ async def get_all_sales(
 async def filter_sales(
     filter_params: SalesFilterParams,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Filter sales records based on criteria.
@@ -339,6 +342,7 @@ async def filter_sales(
 async def get_sales_summary(
     filter_params: SalesFilterParams = None,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Get sales summary (total sales count and revenue).

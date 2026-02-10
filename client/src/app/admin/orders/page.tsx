@@ -52,10 +52,8 @@ export default function AdminOrdersPage() {
   }, [authToken]);
 
   useEffect(() => {
-    if (authToken !== null) {
-      fetchOrders();
-    }
-  }, [fetchOrders, authToken]);
+    fetchOrders();
+  }, [fetchOrders]);
 
   const updateOrderStatus = async (orderId: number, status: "PENDING" | "COMPLETED" | "CANCELLED") => {
     setUpdatingId(orderId);

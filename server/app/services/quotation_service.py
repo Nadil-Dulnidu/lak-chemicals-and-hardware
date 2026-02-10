@@ -14,7 +14,11 @@ from app.schemas.quotation_schema import (
     QuotationListResponse,
     QuotationFilterParams,
     QuotationItemResponse,
+    OrderFromQuotation,
 )
+from app.schemas.order_schema import OrderResponse, OrderItemResponse
+from app.repository.order_repo import OrderRepository
+from app.constants import OrderStatus
 from app.config.logging import get_logger, create_owasp_log_context
 
 
@@ -28,6 +32,7 @@ class QuotationService:
         self.repo = QuotationRepository()
         self.cart_repo = CartRepository()
         self.product_repo = ProductRepository()
+        self.order_repo = OrderRepository()
         self._logger = get_logger(__name__)
 
     async def create_quotation(
@@ -375,7 +380,9 @@ class QuotationService:
                 ),
             )
 
-            quotation = await self.repo.update_status(session, quotation_id, status)
+            quotation = await self.repo.update_status(
+                session, quotation_id, status, status_data.discount_amount
+            )
 
             if quotation:
                 self._logger.info(
@@ -401,6 +408,117 @@ class QuotationService:
                 ),
             )
             raise
+
+    async def create_order_from_quotation(
+        self,
+        session: AsyncSession,
+        quotation_id: int,
+        order_data: OrderFromQuotation,
+        user_id: str,
+    ) -> Optional[OrderResponse]:
+        """
+        Create order from quotation.
+
+        Args:
+            session: Database session
+            quotation_id: Quotation ID
+            order_data: Order details
+            user_id: User ID
+
+        Returns:
+            OrderResponse or None
+        """
+        try:
+            # Get quotation
+            quotation = await self.repo.get_by_id(session, quotation_id)
+            if not quotation:
+                raise ValueError("Quotation not found")
+
+            if quotation.status != QuotationStatus.APPROVED:
+                raise ValueError("Quotation must be APPROVED to create order")
+
+            # Prepare items with unit prices from quotation
+            items = []
+            for item in quotation.quotation_items:
+                items.append(
+                    {
+                        "product_id": str(item.product_id),
+                        "quantity": item.quantity,
+                        "unit_price": item.unit_price,
+                    }
+                )
+
+            # Calculate final total (total - discount)
+            discount = quotation.discount_amount or Decimal("0.00")
+            final_total = quotation.total_amount - discount
+            if final_total < 0:
+                final_total = Decimal("0.00")
+
+            # Prepare order creation data
+            create_data = {
+                "user_id": quotation.user_id,
+                "items": items,
+                "total_amount": final_total,
+                "payment_method": order_data.payment_method,
+                "customer_name": order_data.customer_name,
+                "phone": order_data.phone,
+                "address": order_data.address,
+                "city": order_data.city,
+                "notes": order_data.notes or quotation.notes,
+            }
+
+            # Create order
+            # Note: create expects a dict, and we modified OrderRepository to accept 'unit_price' in items and 'total_amount' override
+            order = await self.order_repo.create(session, create_data)
+
+            if not order:
+                return None
+
+            # Map to response
+            items_response = []
+            for item in order.order_items:
+                product = item.product
+                items_response.append(
+                    OrderItemResponse(
+                        order_item_id=item.order_item_id,
+                        product_id=str(item.product_id),
+                        product_name=product.name if product else None,
+                        quantity=item.quantity,
+                        unit_price=item.unit_price,
+                        subtotal=item.subtotal,
+                    )
+                )
+
+            return OrderResponse(
+                order_id=order.order_id,
+                user_id=order.user_id,
+                status=order.status.value,
+                total_amount=order.total_amount,
+                payment_method=order.payment_method,
+                order_date=order.order_date,
+                completed_date=order.completed_date,
+                cancelled_date=order.cancelled_date,
+                notes=order.notes,
+                customer_name=order.customer_name,
+                phone=order.phone,
+                address=order.address,
+                city=order.city,
+                items=items_response,
+            )
+
+        except Exception as e:
+            self._logger.error(
+                f"Error creating order from quotation: {str(e)}",
+                extra=create_owasp_log_context(
+                    user=user_id,
+                    action="create_order_from_quotation_error",
+                    location="QuotationService.create_order_from_quotation",
+                ),
+            )
+            # Re-raise ValueError for bad requests
+            if isinstance(e, ValueError):
+                raise
+            return None
 
     async def filter_quotations(
         self,
@@ -546,6 +664,7 @@ class QuotationService:
             user_id=quotation.user_id,
             status=quotation.status.value,
             total_amount=quotation.total_amount,
+            discount_amount=quotation.discount_amount or Decimal("0.00"),
             created_at=quotation.created_at,
             updated_at=quotation.updated_at,
             notes=quotation.notes,

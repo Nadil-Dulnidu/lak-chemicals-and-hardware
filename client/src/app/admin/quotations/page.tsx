@@ -1,3 +1,4 @@
+// Update file: c:\nadil-dulnidu\lak-chemicals-and-hardware\client\src\app\admin\quotations\page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -11,10 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Clock, CheckCircle, XCircle, Eye, Package, Filter } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Eye, Package, Filter, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const statusConfig = {
   PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30", label: "Pending" },
@@ -28,6 +31,10 @@ export default function AdminQuotationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  // Discount state
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState<string>("0");
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const { getToken } = useAuth();
@@ -45,6 +52,8 @@ export default function AdminQuotationsPage() {
       const response = await quotationActions.getAll(0, 500, authToken);
       setQuotations(response.quotations);
     } catch (error) {
+      // Suppressing the unused variable error
+      console.error(error);
       toast.error("Failed to fetch quotations");
     } finally {
       setIsLoading(false);
@@ -57,15 +66,41 @@ export default function AdminQuotationsPage() {
     }
   }, [fetchQuotations, authToken]);
 
-  const updateQuotationStatus = async (quotationId: number, status: "APPROVED" | "REJECTED") => {
-    setUpdatingId(quotationId);
+  const handleApproveClick = (quotation: Quotation) => {
+    setSelectedQuotation(quotation);
+    setShowApproveDialog(true);
+    setDiscountAmount("0");
+  };
+
+  const confirmApprove = async () => {
+    if (!selectedQuotation) return;
+
+    setUpdatingId(selectedQuotation.quotation_id);
     try {
-      await quotationActions.updateStatus(quotationId, status, authToken);
-      toast.success(`Quotation ${status.toLowerCase()}`);
+      const discount = parseFloat(discountAmount) || 0;
+      await quotationActions.updateStatus(selectedQuotation.quotation_id, "APPROVED", discount, authToken);
+      toast.success("Quotation approved successfully");
       fetchQuotations();
+      setShowApproveDialog(false);
       setSelectedQuotation(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update quotation");
+      toast.error(error instanceof Error ? error.message : "Failed to approve quotation");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleReject = async (quotationId: number) => {
+    setUpdatingId(quotationId);
+    try {
+      await quotationActions.updateStatus(quotationId, "REJECTED", undefined, authToken);
+      toast.success("Quotation rejected");
+      fetchQuotations();
+      if (selectedQuotation?.quotation_id === quotationId) {
+        setSelectedQuotation(null);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to reject quotation");
     } finally {
       setUpdatingId(null);
     }
@@ -174,7 +209,7 @@ export default function AdminQuotationsPage() {
                                   variant="outline"
                                   size="sm"
                                   className="text-green-400 border-green-500/30 hover:bg-green-500/10"
-                                  onClick={() => updateQuotationStatus(quotation.quotation_id, "APPROVED")}
+                                  onClick={() => handleApproveClick(quotation)}
                                   disabled={updatingId === quotation.quotation_id}
                                 >
                                   Approve
@@ -183,7 +218,7 @@ export default function AdminQuotationsPage() {
                                   variant="outline"
                                   size="sm"
                                   className="text-red-400 border-red-500/30 hover:bg-red-500/10"
-                                  onClick={() => updateQuotationStatus(quotation.quotation_id, "REJECTED")}
+                                  onClick={() => handleReject(quotation.quotation_id)}
                                   disabled={updatingId === quotation.quotation_id}
                                 >
                                   Reject
@@ -203,7 +238,7 @@ export default function AdminQuotationsPage() {
         </Card>
 
         {/* Quotation Detail Dialog */}
-        <Dialog open={!!selectedQuotation} onOpenChange={() => setSelectedQuotation(null)}>
+        <Dialog open={!!selectedQuotation && !showApproveDialog} onOpenChange={() => setSelectedQuotation(null)}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Quotation #{selectedQuotation?.quotation_id}</DialogTitle>
@@ -249,26 +284,26 @@ export default function AdminQuotationsPage() {
                   ))}
                 </div>
                 <Separator />
+
+                {selectedQuotation.discount_amount && selectedQuotation.discount_amount > 0 && (
+                  <div className="flex items-center justify-between text-green-500">
+                    <span>Discount Applied</span>
+                    <span>- LKR {selectedQuotation.discount_amount.toLocaleString()}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>LKR {selectedQuotation.total_amount.toLocaleString()}</span>
+                  <span>LKR {(selectedQuotation.total_amount - (selectedQuotation.discount_amount || 0)).toLocaleString()}</span>
                 </div>
+
                 {selectedQuotation.status === "PENDING" && (
                   <div className="flex gap-3 pt-4">
-                    <Button
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                      onClick={() => updateQuotationStatus(selectedQuotation.quotation_id, "APPROVED")}
-                      disabled={updatingId === selectedQuotation.quotation_id}
-                    >
+                    <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleApproveClick(selectedQuotation)} disabled={updatingId === selectedQuotation.quotation_id}>
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Approve
                     </Button>
-                    <Button
-                      variant="destructive"
-                      className="flex-1"
-                      onClick={() => updateQuotationStatus(selectedQuotation.quotation_id, "REJECTED")}
-                      disabled={updatingId === selectedQuotation.quotation_id}
-                    >
+                    <Button variant="destructive" className="flex-1" onClick={() => handleReject(selectedQuotation.quotation_id)} disabled={updatingId === selectedQuotation.quotation_id}>
                       <XCircle className="h-4 w-4 mr-2" />
                       Reject
                     </Button>
@@ -276,6 +311,43 @@ export default function AdminQuotationsPage() {
                 )}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Approve Dialog */}
+        <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Approve Quotation #{selectedQuotation?.quotation_id}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="font-medium mb-1">Current Total: LKR {selectedQuotation?.total_amount.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground mb-4">You can optionally offer a discount to close the deal.</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="discount">Discount Amount (LKR)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input id="discount" type="number" placeholder="0.00" className="pl-9" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} />
+                </div>
+              </div>
+              <div className="bg-muted/30 p-3 rounded-lg flex justify-between items-center">
+                <span className="font-medium">New Total:</span>
+                <span className="font-bold text-lg text-primary">
+                  LKR{" "}
+                  {(selectedQuotation?.total_amount || 0) - (parseFloat(discountAmount) || 0) < 0 ? 0 : ((selectedQuotation?.total_amount || 0) - (parseFloat(discountAmount) || 0)).toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={confirmApprove} className="bg-green-600 hover:bg-green-700">
+                Confirm Approval
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

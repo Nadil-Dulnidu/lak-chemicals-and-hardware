@@ -103,7 +103,11 @@ class OrderRepository:
                     )
 
                 # Calculate subtotal
-                unit_price = Decimal(str(product.price))
+                if "unit_price" in item_data:
+                    unit_price = Decimal(str(item_data["unit_price"]))
+                else:
+                    unit_price = Decimal(str(product.price))
+
                 subtotal = unit_price * quantity
 
                 # Create order item
@@ -118,7 +122,10 @@ class OrderRepository:
                 total_amount += subtotal
 
             # Update order total
-            order.total_amount = total_amount
+            if "total_amount" in order_data:
+                order.total_amount = Decimal(str(order_data["total_amount"]))
+            else:
+                order.total_amount = total_amount
 
             await session.commit()
 

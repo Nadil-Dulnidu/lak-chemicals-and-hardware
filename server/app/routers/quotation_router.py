@@ -9,8 +9,11 @@ from app.schemas.quotation_schema import (
     QuotationUpdateStatus,
     QuotationResponse,
     QuotationListResponse,
+    QuotationListResponse,
     QuotationFilterParams,
+    OrderFromQuotation,
 )
+from app.schemas.order_schema import OrderResponse
 from app.security.jwt import verify_clerk_token
 
 router = APIRouter(prefix="/quotations", tags=["Quotations"])
@@ -29,6 +32,7 @@ async def get_all_quotations(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Get all quotations.
@@ -91,7 +95,7 @@ async def create_quotation(
 async def create_quotation_from_cart(
     quotation_data: QuotationFromCart,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Create a quotation from the user's cart.
@@ -104,7 +108,7 @@ async def create_quotation_from_cart(
     - Set quotation status to PENDING
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         quotation = await quotation_service.create_quotation_from_cart(
             session, user_id, quotation_data
@@ -140,7 +144,7 @@ async def get_quotation(
 
     Returns quotation details including all items, status, and total amount.
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     quotation = await quotation_service.get_quotation(session, quotation_id, user_id)
 
@@ -164,6 +168,7 @@ async def get_user_quotations(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Get all quotations for the current user.
@@ -185,7 +190,7 @@ async def get_user_quotations(
 async def filter_quotations(
     filter_params: QuotationFilterParams,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Filter quotations based on criteria.
@@ -196,7 +201,7 @@ async def filter_quotations(
     - **skip**: Pagination offset
     - **limit**: Maximum records to return
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     return await quotation_service.filter_quotations(session, user_id, filter_params)
 
@@ -211,7 +216,7 @@ async def update_quotation_status(
     quotation_id: int,
     status_data: QuotationUpdateStatus,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Update quotation status.
@@ -225,7 +230,7 @@ async def update_quotation_status(
     - APPROVED → can be used to create confirmed orders
     """
     try:
-        user_id = "admin"  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         quotation = await quotation_service.update_quotation_status(
             session, quotation_id, status_data, user_id
@@ -243,6 +248,51 @@ async def update_quotation_status(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.post(
+    "/{quotation_id}/create-order",
+    response_model=OrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create order from quotation",
+    description="Create a confirmed order from an approved quotation",
+)
+async def create_order_from_quotation(
+    quotation_id: int,
+    order_data: OrderFromQuotation,
+    session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token)
+):
+    """
+    Create an order from an approved quotation.
+
+    - **quotation_id**: Quotation ID (must be APPROVED)
+    - **payment_method**: Payment method
+    - **customer_name**: Customer name (optional)
+    - **phone**: Contact phone (optional)
+    - **address**: Shipping address (optional)
+    - **city**: City (optional)
+    - **notes**: Additional notes
+
+    The order total will reflect any discount applied to the quotation.
+    """
+    try:
+        user_id = user_data.get("sub")
+
+        order = await quotation_service.create_order_from_quotation(
+            session, quotation_id, order_data, user_id
+        )
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to create order from quotation (check if APPROVED)",
+            )
+
+        return order
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.delete(
     "/{quotation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -252,7 +302,7 @@ async def update_quotation_status(
 async def delete_quotation(
     quotation_id: int,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token)
 ):
     """
     Delete a quotation.
@@ -261,7 +311,7 @@ async def delete_quotation(
 
     Only the quotation owner can delete it.
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     success = await quotation_service.delete_quotation(session, quotation_id, user_id)
 

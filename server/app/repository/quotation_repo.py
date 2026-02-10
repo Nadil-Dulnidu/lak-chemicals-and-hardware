@@ -228,7 +228,11 @@ class QuotationRepository:
             return []
 
     async def update_status(
-        self, session: AsyncSession, quotation_id: int, status: QuotationStatus
+        self,
+        session: AsyncSession,
+        quotation_id: int,
+        status: QuotationStatus,
+        discount_amount: Optional[Decimal] = None,
     ) -> Optional[Quotation]:
         """
         Update quotation status.
@@ -237,6 +241,7 @@ class QuotationRepository:
             session: AsyncSession for database operations
             quotation_id: Quotation ID
             status: New status
+            discount_amount: Optional discount amount (only applied if status is approved)
 
         Returns:
             Updated Quotation or None if not found
@@ -260,6 +265,8 @@ class QuotationRepository:
 
             old_status = quotation.status
             quotation.status = status
+            if discount_amount is not None:
+                quotation.discount_amount = discount_amount
             quotation.updated_at = datetime.utcnow()
 
             await session.commit()

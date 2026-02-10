@@ -1,6 +1,6 @@
 // API Client for LAK Chemicals and Hardware
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface ApiOptions extends RequestInit {
   token?: string | null;
@@ -75,7 +75,7 @@ export async function apiClientFormData<T>(
     method,
     body: formData,
     headers,
-  });
+  },);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: "Unknown error" }));
