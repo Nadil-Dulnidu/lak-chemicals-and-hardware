@@ -1,69 +1,139 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+import stripe
 
 from app.services.payment_service import PaymentService
-from app.schemas.payment_schema import PaymentIntentCreate, PaymentIntentResponse
+from app.services.order_service import OrderService
+from app.utils.db import get_async_session
+from app.config.logging import get_logger, create_owasp_log_context
+
+
+def get_config_value(*keys, default=None):
+    """Lazy import to avoid circular dependency"""
+    from app.config.config_loader import get_config_value as _get_config_value
+
+    return _get_config_value(*keys, default=default)
+
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
-# Initialize service
+# Initialize services
 payment_service = PaymentService()
+order_service = OrderService()
+
+# Frontend base URL for redirect
+FRONTEND_URL = get_config_value("stripe", "frontend_url")
 
 
 @router.post(
-    "/create-payment-intent",
-    response_model=PaymentIntentResponse,
+    "/create-payment-session/{order_id}",
+    response_model=dict,
     status_code=status.HTTP_201_CREATED,
-    summary="Create Stripe payment intent",
-    description="Create a payment intent for processing payments via Stripe",
+    summary="Create Stripe Checkout Session",
+    description="Create a Stripe Checkout Session for an order with line items in LKR",
 )
-async def create_payment_intent(
-    payment_data: PaymentIntentCreate,
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+async def create_payment_session(
+    order_id: int,
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
-    Create a Stripe payment intent.
+    Create a Stripe Checkout Session for an order.
 
-    - **amount**: Amount in cents (e.g., 10000 = LKR 100.00)
+    - **order_id**: The ID of the order to create a payment session for.
+
+    This endpoint will:
+    - Fetch the order and its items from the database
+    - Create Stripe line items for each product in the order
+    - Set currency to LKR (Sri Lankan Rupees)
+    - Set success and cancel redirect URLs
 
     Returns:
-    - **client_secret**: Secret to be used on the client side to complete payment
-
-    Example:
-    ```json
-    {
-      "amount": 10000
-    }
-    ```
-
-    Response:
-    ```json
-    {
-      "client_secret": "pi_xxx_secret_xxx"
-    }
-    ```
+    - **checkout_url**: The Stripe Checkout URL to redirect the user to
+    - **session_id**: The Stripe Session ID for reference
     """
-    user_id = "guest"  # Replace with actual user_id from authentication
-
     try:
-        payment_intent = await payment_service.create_payment_intent(
-            payment_data, user_id
-        )
+        # Fetch the order using the admin method (no user_id filter)
+        order = await order_service.get_order_by_id_admin(session, order_id)
 
-        if not payment_intent:
+        if not order:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create payment intent",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Order {order_id} not found",
             )
 
-        return payment_intent
+        # Build Stripe line items from order items
+        line_items = []
+        for item in order.items:
+            line_items.append(
+                {
+                    "price_data": {
+                        "currency": "lkr",
+                        "product_data": {
+                            "name": item.product_name or f"Product {item.product_id}",
+                        },
+                        "unit_amount": int(
+                            float(item.unit_price) * 100
+                        ),  # Convert to cents
+                    },
+                    "quantity": item.quantity,
+                }
+            )
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+        # Create Stripe Checkout Session
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url=f"{FRONTEND_URL}/payment/success?order_id={order_id}&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{FRONTEND_URL}/payment/cancel?order_id={order_id}",
+            metadata={
+                "order_id": str(order_id),
+            },
         )
-    except Exception as e:
+
+        logger.info(
+            f"Stripe Checkout Session created for order {order_id}: {checkout_session.id}",
+            extra=create_owasp_log_context(
+                user="system",
+                action="create_payment_session_success",
+                location="stripe_router.create_payment_session",
+            ),
+        )
+
+        return {
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id,
+        }
+
+    except HTTPException:
+        raise
+
+    except stripe.error.StripeError as e:
+        logger.error(
+            f"Stripe error creating checkout session: {str(e)}",
+            extra=create_owasp_log_context(
+                user="system",
+                action="create_payment_session_stripe_error",
+                location="stripe_router.create_payment_session",
+            ),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating payment intent: {str(e)}",
+            detail=f"Stripe error: {str(e)}",
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Error creating payment session: {str(e)}",
+            extra=create_owasp_log_context(
+                user="system",
+                action="create_payment_session_error",
+                location="stripe_router.create_payment_session",
+            ),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating payment session: {str(e)}",
         )

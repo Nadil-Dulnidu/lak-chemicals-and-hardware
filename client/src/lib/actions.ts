@@ -470,19 +470,9 @@ export const supplierActions = {
 
 // ============= Payment Actions =============
 export const paymentActions = {
-  createPaymentIntent: (data: PaymentIntentCreate, token?: string | null) =>
-    apiClient<PaymentIntentResponse>("/payments/create-payment-intent", {
-      method: "POST",
-      body: JSON.stringify(data),
-      token,
-    }),
-
   createCheckout: (orderId: number, token?: string | null) =>
-    apiClient<{ checkout_url: string }>(`/payments/create-checkout-session/${orderId}`, {
+    apiClient<{ checkout_url: string; session_id: string }>(`/payments/create-payment-session/${orderId}`, {
       method: "POST",
       token,
     }),
-
-  getPaymentStatus: (orderId: number, token?: string | null) =>
-    apiClient<{ payment_status: string; payment_intent_id?: string }>(`/payments/status/${orderId}`, { token }),
 };

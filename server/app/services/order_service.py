@@ -150,6 +150,38 @@ class OrderService:
             )
             return None
 
+    async def get_order_by_id_admin(
+        self, session: AsyncSession, order_id: int
+    ) -> Optional[OrderResponse]:
+        """
+        Get order by ID without user authorization check (admin/system use).
+
+        Args:
+            session: Database session
+            order_id: Order ID
+
+        Returns:
+            OrderResponse or None if not found
+        """
+        try:
+            order = await self.repo.get_by_id(session, order_id)
+
+            if not order:
+                return None
+
+            return await self._to_response(order)
+
+        except Exception as e:
+            self._logger.error(
+                f"Service error getting order (admin): {str(e)}",
+                extra=create_owasp_log_context(
+                    user="admin",
+                    action="get_order_admin_error",
+                    location="OrderService.get_order_by_id_admin",
+                ),
+            )
+            return None
+
     async def get_user_orders(
         self,
         session: AsyncSession,
