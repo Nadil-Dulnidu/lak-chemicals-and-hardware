@@ -38,6 +38,13 @@ class OrderStatus(enum.Enum):
     CANCELLED = "CANCELLED"
 
 
+class PaymentStatus(enum.Enum):
+    """Payment status enumeration for tracking payment state"""
+
+    UNPAID = "UNPAID"
+    PAID = "PAID"
+
+
 class ReportType(enum.Enum):
     """Report type enumeration for analytics and reporting"""
 

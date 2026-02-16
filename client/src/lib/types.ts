@@ -13,6 +13,7 @@ export type ProductCategory =
   | "other";
 
 export type OrderStatus = "PENDING" | "COMPLETED" | "CANCELLED";
+export type PaymentStatus = "PAID" | "UNPAID";
 export type QuotationStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type ReportType = "SALES" | "INVENTORY" | "PRODUCT_PERFORMANCE" | "LOW_STOCK";
 
@@ -213,6 +214,7 @@ export interface Order {
   status: OrderStatus;
   total_amount: number;
   payment_method?: string;
+  payment_status: PaymentStatus;
   order_date: string;
   completed_date?: string;
   cancelled_date?: string;

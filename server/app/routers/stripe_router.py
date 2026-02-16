@@ -137,3 +137,104 @@ async def create_payment_session(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating payment session: {str(e)}",
         )
+
+
+@router.post(
+    "/confirm-payment/{order_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    summary="Confirm Stripe payment",
+    description="Verify a Stripe session and update order payment status to PAID",
+)
+async def confirm_payment(
+    order_id: int,
+    session_id: str = Query(..., description="Stripe Checkout Session ID"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Confirm a Stripe payment after successful checkout.
+
+    - **order_id**: The order ID
+    - **session_id**: The Stripe Checkout Session ID to verify
+
+    This endpoint will:
+    - Retrieve the Stripe Checkout Session
+    - Verify payment status is 'paid'
+    - Update the order's payment_status to PAID
+    """
+    from app.constants import PaymentStatus
+
+    try:
+        # Retrieve Stripe session to verify payment
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+
+        if checkout_session.payment_status != "paid":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment has not been completed",
+            )
+
+        # Verify the session belongs to this order
+        session_order_id = checkout_session.metadata.get("order_id")
+        if session_order_id != str(order_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Session does not match the provided order",
+            )
+
+        # Update payment status to PAID
+        updated_order = await order_service.update_payment_status(
+            session, order_id, PaymentStatus.PAID
+        )
+
+        if not updated_order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Order {order_id} not found",
+            )
+
+        logger.info(
+            f"Payment confirmed for order {order_id}, session {session_id}",
+            extra=create_owasp_log_context(
+                user="system",
+                action="confirm_payment_success",
+                location="stripe_router.confirm_payment",
+            ),
+        )
+
+        return {
+            "message": "Payment confirmed",
+            "order_id": order_id,
+            "payment_status": "PAID",
+        }
+
+    except HTTPException:
+        raise
+
+    except stripe.error.StripeError as e:
+        logger.error(
+            f"Stripe error confirming payment: {str(e)}",
+            extra=create_owasp_log_context(
+                user="system",
+                action="confirm_payment_stripe_error",
+                location="stripe_router.confirm_payment",
+            ),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Stripe error: {str(e)}",
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Error confirming payment: {str(e)}",
+            extra=create_owasp_log_context(
+                user="system",
+                action="confirm_payment_error",
+                location="stripe_router.confirm_payment",
+            ),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error confirming payment: {str(e)}",
+        )

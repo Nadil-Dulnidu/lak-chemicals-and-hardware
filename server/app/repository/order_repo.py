@@ -11,7 +11,7 @@ from app.models.order_model import Order, OrderItem
 from app.models.sale_model import Sale
 from app.models.product_model import Product
 from app.models.Inventory_model import StockMovement
-from app.constants import OrderStatus, MovementType
+from app.constants import OrderStatus, MovementType, PaymentStatus
 from app.config.logging import get_logger, create_owasp_log_context
 
 
@@ -596,3 +596,58 @@ class OrderRepository:
                 ),
             )
             return False
+
+    async def update_payment_status(
+        self, session: AsyncSession, order_id: int, payment_status: PaymentStatus
+    ) -> Optional[Order]:
+        """
+        Update payment status for an order.
+
+        Args:
+            session: AsyncSession for database operations
+            order_id: Order ID
+            payment_status: New payment status (PAID/UNPAID)
+
+        Returns:
+            Updated Order or None if not found
+        """
+        try:
+            result = await session.execute(
+                select(Order)
+                .where(Order.order_id == order_id)
+                .options(
+                    selectinload(Order.order_items).selectinload(OrderItem.product)
+                )
+            )
+            order = result.scalar_one_or_none()
+
+            if not order:
+                return None
+
+            order.payment_status = payment_status
+            await session.commit()
+            await session.refresh(order)
+
+            self._logger.info(
+                f"Payment status updated for order {order_id}: {payment_status.value}",
+                extra=create_owasp_log_context(
+                    user="system",
+                    action="update_payment_status_success",
+                    location="OrderRepository.update_payment_status",
+                ),
+            )
+
+            return order
+
+        except SQLAlchemyError as e:
+            await session.rollback()
+            error_msg = f"Database error updating payment status: {str(e)}"
+            self._logger.error(
+                error_msg,
+                extra=create_owasp_log_context(
+                    user="system",
+                    action="update_payment_status_db_error",
+                    location="OrderRepository.update_payment_status",
+                ),
+            )
+            return None

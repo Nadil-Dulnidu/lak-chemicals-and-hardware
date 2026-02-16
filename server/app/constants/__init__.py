@@ -3,6 +3,7 @@ from .enums import (
     MovementType,
     QuotationStatus,
     OrderStatus,
+    PaymentStatus,
     ReportType,
 )
 
@@ -11,5 +12,6 @@ __all__ = [
     "MovementType",
     "QuotationStatus",
     "OrderStatus",
+    "PaymentStatus",
     "ReportType",
 ]

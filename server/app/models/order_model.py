@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Integer, Numeric, DateTime, Enum, Foreign
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.constants import OrderStatus
+from app.constants import OrderStatus, PaymentStatus
 from app.utils.db import Base
 
 
@@ -24,6 +24,13 @@ class Order(Base):
     )
     total_amount = Column(Numeric(10, 2), nullable=False)
     payment_method = Column(String(50), nullable=True)
+    payment_status = Column(
+        Enum(PaymentStatus),
+        nullable=False,
+        default=PaymentStatus.UNPAID,
+        server_default="UNPAID",
+        index=True,
+    )
     order_date = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     completed_date = Column(DateTime, nullable=True)
     cancelled_date = Column(DateTime, nullable=True)

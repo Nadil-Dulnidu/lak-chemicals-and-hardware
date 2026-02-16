@@ -27,8 +27,6 @@ import type {
   SupplierListResponse,
   SalesReportData,
   InventoryReportData,
-  PaymentIntentCreate,
-  PaymentIntentResponse,
   ReportConfig,
   ReportConfigListResponse,
   StockMovement,
@@ -475,4 +473,13 @@ export const paymentActions = {
       method: "POST",
       token,
     }),
+
+  confirmPayment: (orderId: number, sessionId: string, token?: string | null) =>
+    apiClient<{ message: string; order_id: number; payment_status: string }>(
+      `/payments/confirm-payment/${orderId}?session_id=${encodeURIComponent(sessionId)}`,
+      {
+        method: "POST",
+        token,
+      }
+    ),
 };

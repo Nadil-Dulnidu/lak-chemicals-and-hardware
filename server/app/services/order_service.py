@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.order_repo import OrderRepository
 from app.repository.product_repo import ProductRepository
-from app.constants import OrderStatus
+from app.constants import OrderStatus, PaymentStatus
 from app.schemas.order_schema import (
     OrderCreate,
     OrderUpdateStatus,
@@ -476,6 +476,41 @@ class OrderService:
             )
             return False
 
+    async def update_payment_status(
+        self,
+        session: AsyncSession,
+        order_id: int,
+        payment_status: PaymentStatus,
+    ) -> "OrderResponse":
+        """
+        Update payment status for an order.
+
+        Args:
+            session: Database session
+            order_id: Order ID
+            payment_status: New payment status (PAID/UNPAID)
+
+        Returns:
+            OrderResponse or None
+        """
+        try:
+            order = await self.repo.update_payment_status(
+                session, order_id, payment_status
+            )
+            if not order:
+                return None
+            return await self._to_response(order)
+        except Exception as e:
+            self._logger.error(
+                f"Service error updating payment status: {str(e)}",
+                extra=create_owasp_log_context(
+                    user="system",
+                    action="update_payment_status_error",
+                    location="OrderService.update_payment_status",
+                ),
+            )
+            return None
+
     async def _to_response(self, order) -> OrderResponse:
         """
         Convert Order model to OrderResponse schema.
@@ -507,6 +542,9 @@ class OrderService:
             status=order.status.value,
             total_amount=order.total_amount,
             payment_method=order.payment_method,
+            payment_status=(
+                order.payment_status.value if order.payment_status else "UNPAID"
+            ),
             order_date=order.order_date,
             completed_date=order.completed_date,
             cancelled_date=order.cancelled_date,

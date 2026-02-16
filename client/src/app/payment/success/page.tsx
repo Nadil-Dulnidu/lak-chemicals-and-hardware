@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { CustomerLayout } from "@/components/layouts/customer-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,11 +8,53 @@ import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle, ArrowRight, Package, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle, ArrowRight, Package, ShieldCheck, Sparkles, AlertCircle } from "lucide-react";
+import { paymentActions } from "@/lib/actions";
+import { useAuth } from "@clerk/nextjs";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order_id");
+  const sessionId = searchParams.get("session_id");
+
+  const [isConfirming, setIsConfirming] = useState(true);
+  const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { getToken } = useAuth();
+
+  const confirmPayment = useCallback(async () => {
+    if (!orderId || !sessionId) {
+      setIsConfirming(false);
+      setConfirmed(true); // Still show success even without session verification
+      return;
+    }
+
+    try {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      await paymentActions.confirmPayment(parseInt(orderId), sessionId, token);
+      setConfirmed(true);
+    } catch (err) {
+      console.error("Failed to confirm payment:", err);
+      setError("Payment was processed but confirmation update failed. Please contact support.");
+      setConfirmed(true); // Still show success since Stripe already charged
+    } finally {
+      setIsConfirming(false);
+    }
+  }, [orderId, sessionId, getToken]);
+
+  useEffect(() => {
+    confirmPayment();
+  }, [confirmPayment]);
+
+  if (isConfirming) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex flex-col justify-center items-center min-h-[60vh]">
+        <Spinner className="h-8 w-8 mb-4" />
+        <p className="text-muted-foreground">Confirming your payment...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -35,6 +77,14 @@ function PaymentSuccessContent() {
         </h1>
         <p className="text-muted-foreground text-lg mb-8">Your payment has been processed successfully. Thank you for shopping with us!</p>
 
+        {/* Error notice if confirmation failed */}
+        {error && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-yellow-300 text-left">{error}</p>
+          </div>
+        )}
+
         {/* Order Details Card */}
         <Card className="bg-card/50 border-border/50 mb-8">
           <CardContent className="pt-6 space-y-4">
@@ -49,7 +99,7 @@ function PaymentSuccessContent() {
               <span className="text-muted-foreground">Payment Status</span>
               <span className="inline-flex items-center gap-1.5 text-green-400 font-medium">
                 <ShieldCheck className="h-4 w-4" />
-                Confirmed
+                {confirmed ? "Paid" : "Confirming..."}
               </span>
             </div>
             <Separator />

@@ -89,6 +89,7 @@ class OrderResponse(BaseModel):
     status: str
     total_amount: Decimal
     payment_method: Optional[str] = None
+    payment_status: str = "UNPAID"
     order_date: datetime
     completed_date: Optional[datetime] = None
     cancelled_date: Optional[datetime] = None
