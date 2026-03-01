@@ -11,9 +11,20 @@ def get_config_value(*keys, default=None):
     return _get_config_value(*keys, default=default)
 
 
-DATABASE_URL = get_config_value(
-    "database", "uri", default="sqlite+aiosqlite:///./test.db"
+_raw_db_url: str = get_config_value(
+    "database",
+    "uri",
+    default="postgresql+asyncpg://postgres:postgres@localhost:5432/lak_chem_hardware",
 )
+
+# SQLAlchemy async engine requires the `asyncpg` driver scheme.
+# Normalise plain `postgresql://` or `postgres://` URIs coming from config.json.
+if _raw_db_url.startswith("postgresql://"):
+    DATABASE_URL = _raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif _raw_db_url.startswith("postgres://"):
+    DATABASE_URL = _raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+else:
+    DATABASE_URL = _raw_db_url
 
 
 class Base(DeclarativeBase):

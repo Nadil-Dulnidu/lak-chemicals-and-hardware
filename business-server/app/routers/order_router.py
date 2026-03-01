@@ -5,7 +5,8 @@ from app.utils.db import get_async_session
 from app.services.order_service import OrderService
 from app.services.sales_service import SalesService
 from app.schemas.order_schema import (
-    OrderCreate,
+    OrderCreateFromCart,
+    OrderCreateFromQuotation,
     OrderUpdateStatus,
     OrderResponse,
     OrderListResponse,
@@ -15,7 +16,8 @@ from app.schemas.order_schema import (
     SalesFilterParams,
     SalesSummaryResponse,
 )
-from app.security.jwt import verify_clerk_token
+
+# from app.security.jwt import verify_clerk_token
 
 router = APIRouter(prefix="/orders", tags=["Orders & Sales"])
 
@@ -44,46 +46,88 @@ async def get_all_orders(
     - **skip**: Pagination offset (default: 0)
     - **limit**: Maximum records to return (default: 100, max: 500)
 
-    Returns all orders ordered by date.
+    Returns all orders ordered by date (newest first).
     """
     return await order_service.get_all_orders(session, skip, limit)
 
 
 @router.post(
-    "",
+    "/from-cart",
     response_model=OrderResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create order",
-    description="Create a new order directly from cart",
+    summary="Create order from cart",
+    description="Create a new order directly from the user's cart",
 )
-async def create_order(
-    order_data: OrderCreate,
+async def create_order_from_cart(
+    order_data: OrderCreateFromCart,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token),
+    # user_data: dict = Depends(verify_clerk_token),
 ):
     """
-    Create a new order.
+    Create a new order from the authenticated user's cart.
 
-    - **items**: List of items with product_id and quantity (required, at least 1 item)
+    - **cart_id**: The cart to convert (required)
     - **payment_method**: Payment method (optional)
     - **notes**: Additional notes (optional)
-    - **customer_name**: Customer full name for shipping (optional)
-    - **phone**: Phone number for shipping (optional)
-    - **address**: Shipping address (optional)
-    - **city**: City for shipping (optional)
+    - **customer_name / phone / address / city**: Shipping info (optional)
 
-    The order will be created with PENDING status.
-    Stock availability will be checked before order creation.
+    The order is created in **PENDING** status.
+    Stock availability is validated before creation.
+    The source cart is referenced via `cart_id` on the order.
     """
     try:
         user_id = user_data.get("sub")
 
-        order = await order_service.create_order(session, user_id, order_data)
+        order = await order_service.create_order_from_cart(session, user_id, order_data)
 
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create order",
+                detail="Failed to create order from cart",
+            )
+
+        return order
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post(
+    "/from-quotation",
+    response_model=OrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create order from approved quotation",
+    description="Create a new order from an APPROVED quotation",
+)
+async def create_order_from_quotation(
+    order_data: OrderCreateFromQuotation,
+    session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+):
+    """
+    Create a new order from an approved quotation.
+
+    - **quotation_id**: The approved quotation to convert (required)
+    - **payment_method**: Payment method (optional)
+    - **notes**: Additional notes (optional; falls back to quotation notes)
+    - **customer_name / phone / address / city**: Shipping info (optional)
+
+    The order is created in **PENDING** status.
+    Quotation must be in **APPROVED** status.
+    Stock availability is validated before creation.
+    The source quotation is referenced via `quotation_id` on the order.
+    """
+    try:
+        user_id = user_data.get("sub")
+
+        order = await order_service.create_order_from_quotation(
+            session, user_id, order_data
+        )
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create order from quotation",
             )
 
         return order
@@ -101,14 +145,14 @@ async def create_order(
 async def get_order(
     order_id: int,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
 ):
     """
     Get an order by its ID.
 
     - **order_id**: Order ID
 
-    Returns order details including all items, status, and payment information.
+    Returns order details including status, payment info, and the
+    source entity reference (cart_id or quotation_id).
     """
     user_id = "admin"  # Replace with actual user_id from authentication
 
@@ -127,24 +171,22 @@ async def get_order(
     "/user/{user_id}",
     response_model=OrderListResponse,
     summary="Get user orders",
-    description="Get all orders for the current user",
+    description="Get all orders for a specific user",
 )
 async def get_user_orders(
     user_id: str,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    
 ):
     """
-    Get all orders for the current user.
+    Get all orders for a user.
 
     - **skip**: Pagination offset (default: 0)
     - **limit**: Maximum records to return (default: 100, max: 500)
 
     Returns orders ordered by order date (most recent first).
     """
-
     return await order_service.get_user_orders(session, user_id, skip, limit)
 
 
@@ -157,7 +199,7 @@ async def get_user_orders(
 async def filter_orders(
     filter_params: OrderFilterParams,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Filter orders based on criteria.
@@ -168,8 +210,7 @@ async def filter_orders(
     - **skip**: Pagination offset
     - **limit**: Maximum records to return
     """
-    user_id = user_data.get("sub")  # Replace with actual user_id from authentication
-
+    user_id = user_data.get("sub")
     return await order_service.filter_orders(session, user_id, filter_params)
 
 
@@ -183,7 +224,7 @@ async def update_order_status(
     order_id: int,
     status_data: OrderUpdateStatus,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Update order status.
@@ -192,17 +233,12 @@ async def update_order_status(
     - **status**: New status (PENDING/COMPLETED/CANCELLED)
 
     Status transitions:
-    - PENDING → COMPLETED (processes order, updates inventory, creates sales records)
-    - PENDING → CANCELLED (cancels order)
+    - PENDING → COMPLETED: deducts stock from source entity items, creates Sale records
+    - PENDING → CANCELLED: marks order as cancelled
     - COMPLETED and CANCELLED orders cannot be changed
-
-    When order is marked COMPLETED:
-    - Inventory stock is reduced
-    - Stock movement records are created
-    - Sales records are generated for analytics
     """
     try:
-        user_id = user_data.get("sub")  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         order = await order_service.update_order_status(
             session, order_id, status_data, user_id
@@ -229,7 +265,7 @@ async def update_order_status(
 async def delete_order(
     order_id: int,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Delete an order.
@@ -241,7 +277,7 @@ async def delete_order(
     Only the order owner can delete it.
     """
     try:
-        user_id = user_data.get("sub")  # Replace with actual user_id from authentication
+        user_id = user_data.get("sub")
 
         success = await order_service.delete_order(session, order_id, user_id)
 
@@ -269,7 +305,7 @@ async def delete_order(
 async def get_order_sales(
     order_id: int,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get all sales records for a specific order.
@@ -280,7 +316,6 @@ async def get_order_sales(
     Only available for COMPLETED orders.
     """
     sales = await sales_service.get_sales_by_order(session, order_id)
-
     return sales
 
 
@@ -294,7 +329,7 @@ async def get_all_sales(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get all sales records.
@@ -317,7 +352,7 @@ async def get_all_sales(
 async def filter_sales(
     filter_params: SalesFilterParams,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Filter sales records based on criteria.
@@ -327,8 +362,6 @@ async def filter_sales(
     - **end_date**: Filter sales until this date
     - **skip**: Pagination offset
     - **limit**: Maximum records to return
-
-    Used for product-specific analytics and time-based reporting.
     """
     return await sales_service.filter_sales(session, filter_params)
 
@@ -342,7 +375,7 @@ async def filter_sales(
 async def get_sales_summary(
     filter_params: SalesFilterParams = None,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get sales summary (total sales count and revenue).
@@ -355,7 +388,5 @@ async def get_sales_summary(
     - Total number of sales
     - Total revenue
     - Date range (if filtered)
-
-    Used for dashboard analytics and reporting.
     """
     return await sales_service.get_sales_summary(session, filter_params)

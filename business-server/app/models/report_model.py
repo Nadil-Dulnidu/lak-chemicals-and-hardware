@@ -24,14 +24,12 @@ class Report(Base):
         comment="Type of report (SALES, INVENTORY, etc.)",
     )
 
-    # Report Parameters (stored as JSON-like text for flexibility)
     parameters = Column(
         Text,
         nullable=True,
         comment="JSON string of report parameters (date range, filters, etc.)",
     )
 
-    # Metadata
     created_by = Column(
         String(50), nullable=False, comment="User ID who created the report"
     )

@@ -32,7 +32,7 @@ async def get_all_quotations(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get all quotations.
@@ -168,7 +168,7 @@ async def get_user_quotations(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Get all quotations for the current user.
@@ -190,7 +190,7 @@ async def get_user_quotations(
 async def filter_quotations(
     filter_params: QuotationFilterParams,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Filter quotations based on criteria.
@@ -216,7 +216,7 @@ async def update_quotation_status(
     quotation_id: int,
     status_data: QuotationUpdateStatus,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Update quotation status.
@@ -259,7 +259,7 @@ async def create_order_from_quotation(
     quotation_id: int,
     order_data: OrderFromQuotation,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Create an order from an approved quotation.
@@ -302,7 +302,7 @@ async def create_order_from_quotation(
 async def delete_quotation(
     quotation_id: int,
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token)
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Delete a quotation.

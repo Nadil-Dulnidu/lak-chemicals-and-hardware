@@ -16,7 +16,7 @@ from app.schemas.quotation_schema import (
     QuotationItemResponse,
     OrderFromQuotation,
 )
-from app.schemas.order_schema import OrderResponse, OrderItemResponse
+from app.schemas.order_schema import OrderResponse
 from app.repository.order_repo import OrderRepository
 from app.constants import OrderStatus
 from app.config.logging import get_logger, create_owasp_log_context
@@ -429,7 +429,7 @@ class QuotationService:
             OrderResponse or None
         """
         try:
-            # Get quotation
+            # Get quotation to validate it exists and is approved
             quotation = await self.repo.get_by_id(session, quotation_id)
             if not quotation:
                 raise ValueError("Quotation not found")
@@ -437,28 +437,11 @@ class QuotationService:
             if quotation.status != QuotationStatus.APPROVED:
                 raise ValueError("Quotation must be APPROVED to create order")
 
-            # Prepare items with unit prices from quotation
-            items = []
-            for item in quotation.quotation_items:
-                items.append(
-                    {
-                        "product_id": str(item.product_id),
-                        "quantity": item.quantity,
-                        "unit_price": item.unit_price,
-                    }
-                )
-
-            # Calculate final total (total - discount)
-            discount = quotation.discount_amount or Decimal("0.00")
-            final_total = quotation.total_amount - discount
-            if final_total < 0:
-                final_total = Decimal("0.00")
-
-            # Prepare order creation data
+            # Delegate to the new repository method which handles all
+            # stock validation, total calculation, and order creation
             create_data = {
                 "user_id": quotation.user_id,
-                "items": items,
-                "total_amount": final_total,
+                "quotation_id": quotation_id,
                 "payment_method": order_data.payment_method,
                 "customer_name": order_data.customer_name,
                 "phone": order_data.phone,
@@ -467,43 +450,31 @@ class QuotationService:
                 "notes": order_data.notes or quotation.notes,
             }
 
-            # Create order
-            # Note: create expects a dict, and we modified OrderRepository to accept 'unit_price' in items and 'total_amount' override
-            order = await self.order_repo.create(session, create_data)
+            order = await self.order_repo.create_from_quotation(session, create_data)
 
             if not order:
                 return None
 
-            # Map to response
-            items_response = []
-            for item in order.order_items:
-                product = item.product
-                items_response.append(
-                    OrderItemResponse(
-                        order_item_id=item.order_item_id,
-                        product_id=str(item.product_id),
-                        product_name=product.name if product else None,
-                        quantity=item.quantity,
-                        unit_price=item.unit_price,
-                        subtotal=item.subtotal,
-                    )
-                )
-
+            # Return slim OrderResponse — item detail lives in the linked quotation
             return OrderResponse(
                 order_id=order.order_id,
                 user_id=order.user_id,
                 status=order.status.value,
                 total_amount=order.total_amount,
                 payment_method=order.payment_method,
+                payment_status=(
+                    order.payment_status.value if order.payment_status else "UNPAID"
+                ),
                 order_date=order.order_date,
                 completed_date=order.completed_date,
                 cancelled_date=order.cancelled_date,
                 notes=order.notes,
+                cart_id=order.cart_id,
+                quotation_id=order.quotation_id,
                 customer_name=order.customer_name,
                 phone=order.phone,
                 address=order.address,
                 city=order.city,
-                items=items_response,
             )
 
         except Exception as e:
@@ -515,7 +486,6 @@ class QuotationService:
                     location="QuotationService.create_order_from_quotation",
                 ),
             )
-            # Re-raise ValueError for bad requests
             if isinstance(e, ValueError):
                 raise
             return None

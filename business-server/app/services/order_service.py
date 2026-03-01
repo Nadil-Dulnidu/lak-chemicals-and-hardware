@@ -3,15 +3,14 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.order_repo import OrderRepository
-from app.repository.product_repo import ProductRepository
 from app.constants import OrderStatus, PaymentStatus
 from app.schemas.order_schema import (
-    OrderCreate,
+    OrderCreateFromCart,
+    OrderCreateFromQuotation,
     OrderUpdateStatus,
     OrderResponse,
     OrderListResponse,
     OrderFilterParams,
-    OrderItemResponse,
 )
 from app.config.logging import get_logger, create_owasp_log_context
 
@@ -19,45 +18,47 @@ from app.config.logging import get_logger, create_owasp_log_context
 class OrderService:
     """
     Service layer for Order business logic.
-    Handles order creation and status management.
+    Orders can be created from a Cart or an approved Quotation.
     """
 
     def __init__(self):
         self.repo = OrderRepository()
-        self.product_repo = ProductRepository()
         self._logger = get_logger(__name__)
 
-    async def create_order(
+    # ──────────────────────────────────────────────────────────────────────
+    # CREATE
+    # ──────────────────────────────────────────────────────────────────────
+
+    async def create_order_from_cart(
         self,
         session: AsyncSession,
         user_id: str,
-        order_data: OrderCreate,
+        order_data: OrderCreateFromCart,
     ) -> Optional[OrderResponse]:
         """
-        Create a new order directly.
+        Create a new order from the user's cart.
 
         Args:
-            session: Database session
-            user_id: User ID
-            order_data: Order data with items
+            session   : Database session
+            user_id   : Authenticated user ID
+            order_data: OrderCreateFromCart payload
 
         Returns:
             OrderResponse or None if creation fails
         """
         try:
             self._logger.info(
-                f"Creating order for user: {user_id}",
+                f"Creating order from cart {order_data.cart_id} for user {user_id}",
                 extra=create_owasp_log_context(
                     user=user_id,
-                    action="create_order",
-                    location="OrderService.create_order",
+                    action="create_order_from_cart",
+                    location="OrderService.create_order_from_cart",
                 ),
             )
 
-            # Prepare order data
             order_dict = {
                 "user_id": user_id,
-                "items": [item.model_dump() for item in order_data.items],
+                "cart_id": order_data.cart_id,
                 "payment_method": order_data.payment_method,
                 "notes": order_data.notes,
                 "customer_name": order_data.customer_name,
@@ -66,69 +67,116 @@ class OrderService:
                 "city": order_data.city,
             }
 
-            # Create order
-            order = await self.repo.create(session, order_dict)
+            order = await self.repo.create_from_cart(session, order_dict)
 
             if order:
                 self._logger.info(
-                    f"Order created successfully: {order.order_id}",
+                    f"Order {order.order_id} created from cart {order_data.cart_id}",
                     extra=create_owasp_log_context(
                         user=user_id,
-                        action="create_order_success",
-                        location="OrderService.create_order",
+                        action="create_order_from_cart_success",
+                        location="OrderService.create_order_from_cart",
                     ),
                 )
-
-                return await self._to_response(order)
+                return self._to_response(order)
 
             return None
 
-        except ValueError as e:
+        except ValueError:
+            raise
+        except Exception as e:
             self._logger.error(
-                f"Validation error creating order: {str(e)}",
+                f"Service error creating order from cart: {e}",
                 extra=create_owasp_log_context(
                     user=user_id,
-                    action="create_order_validation_error",
-                    location="OrderService.create_order",
+                    action="create_order_from_cart_error",
+                    location="OrderService.create_order_from_cart",
                 ),
             )
             raise
 
-        except Exception as e:
-            self._logger.error(
-                f"Service error creating order: {str(e)}",
+    async def create_order_from_quotation(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        order_data: OrderCreateFromQuotation,
+    ) -> Optional[OrderResponse]:
+        """
+        Create a new order from an approved quotation.
+
+        Args:
+            session   : Database session
+            user_id   : Authenticated user ID
+            order_data: OrderCreateFromQuotation payload
+
+        Returns:
+            OrderResponse or None if creation fails
+        """
+        try:
+            self._logger.info(
+                f"Creating order from quotation {order_data.quotation_id} for user {user_id}",
                 extra=create_owasp_log_context(
                     user=user_id,
-                    action="create_order_error",
-                    location="OrderService.create_order",
+                    action="create_order_from_quotation",
+                    location="OrderService.create_order_from_quotation",
+                ),
+            )
+
+            order_dict = {
+                "user_id": user_id,
+                "quotation_id": order_data.quotation_id,
+                "payment_method": order_data.payment_method,
+                "notes": order_data.notes,
+                "customer_name": order_data.customer_name,
+                "phone": order_data.phone,
+                "address": order_data.address,
+                "city": order_data.city,
+            }
+
+            order = await self.repo.create_from_quotation(session, order_dict)
+
+            if order:
+                self._logger.info(
+                    f"Order {order.order_id} created from quotation {order_data.quotation_id}",
+                    extra=create_owasp_log_context(
+                        user=user_id,
+                        action="create_order_from_quotation_success",
+                        location="OrderService.create_order_from_quotation",
+                    ),
+                )
+                return self._to_response(order)
+
+            return None
+
+        except ValueError:
+            raise
+        except Exception as e:
+            self._logger.error(
+                f"Service error creating order from quotation: {e}",
+                extra=create_owasp_log_context(
+                    user=user_id,
+                    action="create_order_from_quotation_error",
+                    location="OrderService.create_order_from_quotation",
                 ),
             )
             raise
+
+    # ──────────────────────────────────────────────────────────────────────
+    # READ
+    # ──────────────────────────────────────────────────────────────────────
 
     async def get_order(
         self, session: AsyncSession, order_id: int, user_id: str
     ) -> Optional[OrderResponse]:
-        """
-        Get order by ID.
-
-        Args:
-            session: Database session
-            order_id: Order ID
-            user_id: User ID (for authorization)
-
-        Returns:
-            OrderResponse or None if not found
-        """
+        """Get order by ID (user-scoped)."""
         try:
             order = await self.repo.get_by_id(session, order_id)
-
             if not order:
                 return None
 
-            # Verify user owns this order
             if order.user_id != user_id:
                 self._logger.warning(
-                    f"Unauthorized access attempt to order {order_id} by user {user_id}",
+                    f"Unauthorized access to order {order_id} by user {user_id}",
                     extra=create_owasp_log_context(
                         user=user_id,
                         action="get_order_unauthorized",
@@ -137,11 +185,11 @@ class OrderService:
                 )
                 return None
 
-            return await self._to_response(order)
+            return self._to_response(order)
 
         except Exception as e:
             self._logger.error(
-                f"Service error getting order: {str(e)}",
+                f"Service error getting order: {e}",
                 extra=create_owasp_log_context(
                     user=user_id,
                     action="get_order_error",
@@ -153,27 +201,15 @@ class OrderService:
     async def get_order_by_id_admin(
         self, session: AsyncSession, order_id: int
     ) -> Optional[OrderResponse]:
-        """
-        Get order by ID without user authorization check (admin/system use).
-
-        Args:
-            session: Database session
-            order_id: Order ID
-
-        Returns:
-            OrderResponse or None if not found
-        """
+        """Get order by ID without user auth check (admin use)."""
         try:
             order = await self.repo.get_by_id(session, order_id)
-
             if not order:
                 return None
-
-            return await self._to_response(order)
-
+            return self._to_response(order)
         except Exception as e:
             self._logger.error(
-                f"Service error getting order (admin): {str(e)}",
+                f"Service error getting order (admin): {e}",
                 extra=create_owasp_log_context(
                     user="admin",
                     action="get_order_admin_error",
@@ -189,39 +225,21 @@ class OrderService:
         skip: int = 0,
         limit: int = 100,
     ) -> OrderListResponse:
-        """
-        Get all orders for a user.
-
-        Args:
-            session: Database session
-            user_id: User ID
-            skip: Number of records to skip
-            limit: Maximum records to return
-
-        Returns:
-            OrderListResponse with orders
-        """
+        """Get all orders for a user."""
         try:
             orders = await self.repo.get_user_orders(session, user_id, skip, limit)
             total = await self.repo.count_orders(session, user_id)
 
-            order_responses = []
-            for order in orders:
-                response = await self._to_response(order)
-                if response:
-                    order_responses.append(response)
-
             return OrderListResponse(
-                orders=order_responses,
+                orders=[self._to_response(o) for o in orders],
                 total=total,
                 skip=skip,
                 limit=limit,
                 has_more=skip + len(orders) < total,
             )
-
         except Exception as e:
             self._logger.error(
-                f"Service error getting user orders: {str(e)}",
+                f"Service error getting user orders: {e}",
                 extra=create_owasp_log_context(
                     user=user_id,
                     action="get_user_orders_error",
@@ -238,39 +256,21 @@ class OrderService:
         skip: int = 0,
         limit: int = 100,
     ) -> OrderListResponse:
-        """
-        Get all orders (admin function).
-
-        Args:
-            session: Database session
-            skip: Number of records to skip
-            limit: Maximum records to return
-
-        Returns:
-            OrderListResponse with all orders
-        """
+        """Get all orders (admin function)."""
         try:
-            # Pass None as user_id to get all orders
             orders = await self.repo.filter_orders(session, None, {}, skip, limit)
             total = await self.repo.count_orders(session, None, {})
 
-            order_responses = []
-            for order in orders:
-                response = await self._to_response(order)
-                if response:
-                    order_responses.append(response)
-
             return OrderListResponse(
-                orders=order_responses,
+                orders=[self._to_response(o) for o in orders],
                 total=total,
                 skip=skip,
                 limit=limit,
                 has_more=skip + len(orders) < total,
             )
-
         except Exception as e:
             self._logger.error(
-                f"Service error getting all orders: {str(e)}",
+                f"Service error getting all orders: {e}",
                 extra=create_owasp_log_context(
                     user="admin",
                     action="get_all_orders_error",
@@ -281,6 +281,10 @@ class OrderService:
                 orders=[], total=0, skip=skip, limit=limit, has_more=False
             )
 
+    # ──────────────────────────────────────────────────────────────────────
+    # UPDATE
+    # ──────────────────────────────────────────────────────────────────────
+
     async def update_order_status(
         self,
         session: AsyncSession,
@@ -288,20 +292,8 @@ class OrderService:
         status_data: OrderUpdateStatus,
         user_id: str,
     ) -> Optional[OrderResponse]:
-        """
-        Update order status.
-
-        Args:
-            session: Database session
-            order_id: Order ID
-            status_data: New status
-            user_id: User ID (for logging)
-
-        Returns:
-            OrderResponse or None if update fails
-        """
+        """Update order status."""
         try:
-            # Convert string enum to OrderStatus
             status = OrderStatus[status_data.status.value]
 
             self._logger.info(
@@ -314,35 +306,15 @@ class OrderService:
             )
 
             order = await self.repo.update_status(session, order_id, status, user_id)
-
             if order:
-                self._logger.info(
-                    f"Order status updated successfully: {order_id}",
-                    extra=create_owasp_log_context(
-                        user=user_id,
-                        action="update_order_status_success",
-                        location="OrderService.update_order_status",
-                    ),
-                )
-
-                return await self._to_response(order)
-
+                return self._to_response(order)
             return None
 
-        except ValueError as e:
-            self._logger.error(
-                f"Validation error updating order status: {str(e)}",
-                extra=create_owasp_log_context(
-                    user=user_id,
-                    action="update_order_status_validation_error",
-                    location="OrderService.update_order_status",
-                ),
-            )
+        except ValueError:
             raise
-
         except Exception as e:
             self._logger.error(
-                f"Service error updating order status: {str(e)}",
+                f"Service error updating order status: {e}",
                 extra=create_owasp_log_context(
                     user=user_id,
                     action="update_order_status_error",
@@ -351,25 +323,39 @@ class OrderService:
             )
             raise
 
+    async def update_payment_status(
+        self,
+        session: AsyncSession,
+        order_id: int,
+        payment_status: PaymentStatus,
+    ) -> Optional["OrderResponse"]:
+        """Update payment status for an order."""
+        try:
+            order = await self.repo.update_payment_status(
+                session, order_id, payment_status
+            )
+            if not order:
+                return None
+            return self._to_response(order)
+        except Exception as e:
+            self._logger.error(
+                f"Service error updating payment status: {e}",
+                extra=create_owasp_log_context(
+                    user="system",
+                    action="update_payment_status_error",
+                    location="OrderService.update_payment_status",
+                ),
+            )
+            return None
+
     async def filter_orders(
         self,
         session: AsyncSession,
         user_id: str,
         filter_params: OrderFilterParams,
     ) -> OrderListResponse:
-        """
-        Filter orders based on criteria.
-
-        Args:
-            session: Database session
-            user_id: User ID
-            filter_params: Filter parameters
-
-        Returns:
-            OrderListResponse with filtered orders
-        """
+        """Filter orders based on criteria."""
         try:
-            # Convert Pydantic model to dict for repository
             filters = filter_params.model_dump(
                 exclude={"skip", "limit"}, exclude_unset=True
             )
@@ -377,26 +363,18 @@ class OrderService:
             orders = await self.repo.filter_orders(
                 session, user_id, filters, filter_params.skip, filter_params.limit
             )
-
             total = await self.repo.count_orders(session, user_id, filters)
 
-            order_responses = []
-            for order in orders:
-                response = await self._to_response(order)
-                if response:
-                    order_responses.append(response)
-
             return OrderListResponse(
-                orders=order_responses,
+                orders=[self._to_response(o) for o in orders],
                 total=total,
                 skip=filter_params.skip,
                 limit=filter_params.limit,
                 has_more=filter_params.skip + len(orders) < total,
             )
-
         except Exception as e:
             self._logger.error(
-                f"Service error filtering orders: {str(e)}",
+                f"Service error filtering orders: {e}",
                 extra=create_owasp_log_context(
                     user=user_id,
                     action="filter_orders_error",
@@ -411,30 +389,22 @@ class OrderService:
                 has_more=False,
             )
 
+    # ──────────────────────────────────────────────────────────────────────
+    # DELETE
+    # ──────────────────────────────────────────────────────────────────────
+
     async def delete_order(
         self, session: AsyncSession, order_id: int, user_id: str
     ) -> bool:
-        """
-        Delete an order.
-
-        Args:
-            session: Database session
-            order_id: Order ID
-            user_id: User ID (for authorization)
-
-        Returns:
-            True if successful
-        """
+        """Delete an order (user-scoped, only PENDING/CANCELLED)."""
         try:
-            # Verify user owns this order
             order = await self.repo.get_by_id(session, order_id)
-
             if not order:
                 return False
 
             if order.user_id != user_id:
                 self._logger.warning(
-                    f"Unauthorized delete attempt on order {order_id} by user {user_id}",
+                    f"Unauthorized delete attempt on order {order_id} by {user_id}",
                     extra=create_owasp_log_context(
                         user=user_id,
                         action="delete_order_unauthorized",
@@ -443,31 +413,13 @@ class OrderService:
                 )
                 return False
 
-            self._logger.info(
-                f"Deleting order: {order_id}",
-                extra=create_owasp_log_context(
-                    user=user_id,
-                    action="delete_order",
-                    location="OrderService.delete_order",
-                ),
-            )
-
             return await self.repo.delete(session, order_id)
 
-        except ValueError as e:
-            self._logger.error(
-                f"Validation error deleting order: {str(e)}",
-                extra=create_owasp_log_context(
-                    user=user_id,
-                    action="delete_order_validation_error",
-                    location="OrderService.delete_order",
-                ),
-            )
+        except ValueError:
             raise
-
         except Exception as e:
             self._logger.error(
-                f"Service error deleting order: {str(e)}",
+                f"Service error deleting order: {e}",
                 extra=create_owasp_log_context(
                     user=user_id,
                     action="delete_order_error",
@@ -476,66 +428,12 @@ class OrderService:
             )
             return False
 
-    async def update_payment_status(
-        self,
-        session: AsyncSession,
-        order_id: int,
-        payment_status: PaymentStatus,
-    ) -> "OrderResponse":
-        """
-        Update payment status for an order.
+    # ──────────────────────────────────────────────────────────────────────
+    # INTERNAL HELPERS
+    # ──────────────────────────────────────────────────────────────────────
 
-        Args:
-            session: Database session
-            order_id: Order ID
-            payment_status: New payment status (PAID/UNPAID)
-
-        Returns:
-            OrderResponse or None
-        """
-        try:
-            order = await self.repo.update_payment_status(
-                session, order_id, payment_status
-            )
-            if not order:
-                return None
-            return await self._to_response(order)
-        except Exception as e:
-            self._logger.error(
-                f"Service error updating payment status: {str(e)}",
-                extra=create_owasp_log_context(
-                    user="system",
-                    action="update_payment_status_error",
-                    location="OrderService.update_payment_status",
-                ),
-            )
-            return None
-
-    async def _to_response(self, order) -> OrderResponse:
-        """
-        Convert Order model to OrderResponse schema.
-
-        Args:
-            order: Order model instance
-
-        Returns:
-            OrderResponse schema
-        """
-        # Build order items
-        items = []
-        for item in order.order_items:
-            product = item.product
-            items.append(
-                OrderItemResponse(
-                    order_item_id=item.order_item_id,
-                    product_id=str(item.product_id),
-                    product_name=product.name if product else None,
-                    quantity=item.quantity,
-                    unit_price=item.unit_price,
-                    subtotal=item.subtotal,
-                )
-            )
-
+    def _to_response(self, order) -> OrderResponse:
+        """Convert Order ORM model → OrderResponse Pydantic schema."""
         return OrderResponse(
             order_id=order.order_id,
             user_id=order.user_id,
@@ -549,7 +447,8 @@ class OrderService:
             completed_date=order.completed_date,
             cancelled_date=order.cancelled_date,
             notes=order.notes,
-            items=items,
+            cart_id=order.cart_id,
+            quotation_id=order.quotation_id,
             customer_name=order.customer_name,
             phone=order.phone,
             address=order.address,

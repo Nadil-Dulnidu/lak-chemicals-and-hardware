@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 
 
-# ============= Order Schemas =============
+# ============= Enums =============
 
 
 class OrderStatusEnum(str, Enum):
@@ -16,50 +16,22 @@ class OrderStatusEnum(str, Enum):
     CANCELLED = "CANCELLED"
 
 
-class OrderItemBase(BaseModel):
-    """Base order item schema"""
-
-    product_id: str = Field(..., description="Product UUID")
-    quantity: int = Field(..., gt=0, description="Quantity (must be positive)")
-
-    @field_validator("quantity")
-    @classmethod
-    def validate_quantity(cls, v):
-        if v <= 0:
-            raise ValueError("Quantity must be greater than 0")
-        return v
+# ============= Order Create Schemas =============
 
 
-class OrderItemCreate(OrderItemBase):
-    """Schema for creating order item"""
+class OrderCreateFromCart(BaseModel):
+    """
+    Schema for creating an order from the user's cart.
+    All cart items are automatically pulled from the cart.
+    """
 
-    pass
-
-
-class OrderItemResponse(BaseModel):
-    """Schema for order item response"""
-
-    order_item_id: int
-    product_id: str
-    product_name: Optional[str] = None
-    quantity: int
-    unit_price: Decimal
-    subtotal: Decimal
-
-    class Config:
-        from_attributes = True
-
-
-class OrderCreate(BaseModel):
-    """Schema for creating an order directly"""
-
-    items: List[OrderItemCreate] = Field(..., min_length=1, description="List of items")
+    cart_id: int = Field(..., description="Cart ID to convert into an order")
     payment_method: Optional[str] = Field(
         None, max_length=50, description="Payment method"
     )
     notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
 
-    # Shipping Information
+    # Shipping / contact information
     customer_name: Optional[str] = Field(
         None, max_length=100, description="Customer full name"
     )
@@ -67,12 +39,31 @@ class OrderCreate(BaseModel):
     address: Optional[str] = Field(None, max_length=255, description="Shipping address")
     city: Optional[str] = Field(None, max_length=100, description="City")
 
-    @field_validator("items")
-    @classmethod
-    def validate_items(cls, v):
-        if len(v) == 0:
-            raise ValueError("At least one item is required")
-        return v
+
+class OrderCreateFromQuotation(BaseModel):
+    """
+    Schema for creating an order from an approved quotation.
+    All quotation items are automatically pulled from the quotation.
+    """
+
+    quotation_id: int = Field(
+        ..., description="Approved Quotation ID to convert into an order"
+    )
+    payment_method: Optional[str] = Field(
+        None, max_length=50, description="Payment method"
+    )
+    notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
+
+    # Shipping / contact information
+    customer_name: Optional[str] = Field(
+        None, max_length=100, description="Customer full name"
+    )
+    phone: Optional[str] = Field(None, max_length=20, description="Phone number")
+    address: Optional[str] = Field(None, max_length=255, description="Shipping address")
+    city: Optional[str] = Field(None, max_length=100, description="City")
+
+
+# ============= Order Update Schemas =============
 
 
 class OrderUpdateStatus(BaseModel):
@@ -81,8 +72,15 @@ class OrderUpdateStatus(BaseModel):
     status: OrderStatusEnum = Field(..., description="New status")
 
 
+# ============= Order Response Schemas =============
+
+
 class OrderResponse(BaseModel):
-    """Schema for order response"""
+    """
+    Schema for order response.
+    Includes source reference (cart_id or quotation_id) so the caller
+    can fetch item detail from the corresponding source entity.
+    """
 
     order_id: int
     user_id: str
@@ -94,9 +92,12 @@ class OrderResponse(BaseModel):
     completed_date: Optional[datetime] = None
     cancelled_date: Optional[datetime] = None
     notes: Optional[str] = None
-    items: List[OrderItemResponse]
 
-    # Shipping Information
+    # Source entity references (one will be set, the other None)
+    cart_id: Optional[int] = None
+    quotation_id: Optional[int] = None
+
+    # Shipping / contact snapshot
     customer_name: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
@@ -140,9 +141,13 @@ class OrderSummaryResponse(BaseModel):
     user_id: str
     status: str
     total_amount: Decimal
-    total_items: int
     order_date: datetime
     completed_date: Optional[datetime] = None
+    cart_id: Optional[int] = None
+    quotation_id: Optional[int] = None
+
+
+# ============= Sales Schemas =============
 
 
 class SaleResponse(BaseModel):

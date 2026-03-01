@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repository.report_repo import ReportRepository
 from app.models.sale_model import Sale
 from app.models.product_model import Product
-from app.models.order_model import Order, OrderItem
+from app.models.order_model import Order
 from app.constants import ReportType
 from app.schemas.report_schema import (
     ReportCreate,
