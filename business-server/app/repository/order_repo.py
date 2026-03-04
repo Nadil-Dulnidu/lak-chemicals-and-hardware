@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
-from app.models.order_model import Order
+from app.models.order_model import Order, OrderProduct
 from app.models.cart_model import Cart, CartItem
 from app.models.quotation_model import Quotation, QuotationItem
 from app.models.sale_model import Sale
@@ -116,6 +116,22 @@ class OrderRepository:
                 city=order_data.get("city"),
             )
             session.add(order)
+            await session.flush()  # Get order_id before adding items
+
+            # ── Snapshot items into order_products ─────────────────────────
+            for cart_item in cart.cart_items:
+                product = cart_item.product
+                unit_price = Decimal(str(product.price))
+                session.add(
+                    OrderProduct(
+                        order_id=order.order_id,
+                        product_id=cart_item.product_id,
+                        quantity=cart_item.quantity,
+                        unit_price=unit_price,
+                        subtotal=unit_price * cart_item.quantity,
+                    )
+                )
+
             await session.commit()
             await session.refresh(order)
 
@@ -228,6 +244,20 @@ class OrderRepository:
                 city=order_data.get("city"),
             )
             session.add(order)
+            await session.flush()  # Get order_id before adding items
+
+            # ── Snapshot items into order_products ─────────────────────────
+            for q_item in quotation.quotation_items:
+                session.add(
+                    OrderProduct(
+                        order_id=order.order_id,
+                        product_id=q_item.product_id,
+                        quantity=q_item.quantity,
+                        unit_price=q_item.unit_price,
+                        subtotal=q_item.subtotal,
+                    )
+                )
+
             await session.commit()
             await session.refresh(order)
 
@@ -401,85 +431,68 @@ class OrderRepository:
     ) -> None:
         """
         On completion: deduct stock and record sales for every item
-        in the source entity (Cart or Quotation).
+        in the order_products junction table.
         """
-        # ── Resolve items from the source ─────────────────────────────────
-        items: List[Dict[str, Any]] = []
-
-        if order.cart_id:
-            cart_result = await session.execute(
-                select(Cart)
-                .where(Cart.cart_id == order.cart_id)
-                .options(selectinload(Cart.cart_items).selectinload(CartItem.product))
+        # ── Read items from order_products (always available) ──────────────
+        if not order.order_products:
+            self._logger.warning(
+                f"Order {order.order_id} has no order_products — skipping completion processing",
+                extra=create_owasp_log_context(
+                    user=user_id,
+                    action="process_order_completion_no_items",
+                    location="OrderRepository._process_order_completion",
+                ),
             )
-            cart = cart_result.scalar_one_or_none()
-            if cart:
-                for ci in cart.cart_items:
-                    if ci.product:
-                        items.append(
-                            {
-                                "product_id": ci.product_id,
-                                "product": ci.product,
-                                "quantity": ci.quantity,
-                                "unit_price": Decimal(str(ci.product.price)),
-                                "subtotal": Decimal(str(ci.product.price))
-                                * ci.quantity,
-                            }
-                        )
+            return
 
-        elif order.quotation_id:
-            quot_result = await session.execute(
-                select(Quotation)
-                .where(Quotation.quotation_id == order.quotation_id)
-                .options(
-                    selectinload(Quotation.quotation_items).selectinload(
-                        QuotationItem.product
-                    )
+        for op in order.order_products:
+            # Load the product to update stock
+            product = op.product
+            if not product:
+                product_result = await session.execute(
+                    select(Product).where(Product.id == op.product_id)
                 )
-            )
-            quotation = quot_result.scalar_one_or_none()
-            if quotation:
-                for qi in quotation.quotation_items:
-                    if qi.product:
-                        items.append(
-                            {
-                                "product_id": qi.product_id,
-                                "product": qi.product,
-                                "quantity": qi.quantity,
-                                "unit_price": qi.unit_price,
-                                "subtotal": qi.subtotal,
-                            }
-                        )
+                product = product_result.scalar_one_or_none()
 
-        # ── Deduct stock + record sale ────────────────────────────────────
-        for item in items:
-            product = item["product"]
+            if not product:
+                self._logger.warning(
+                    f"Product {op.product_id} not found — skipping stock deduction",
+                    extra=create_owasp_log_context(
+                        user=user_id,
+                        action="process_order_completion_product_missing",
+                        location="OrderRepository._process_order_completion",
+                    ),
+                )
+                continue
 
-            product.stock_qty -= item["quantity"]
+            # Deduct stock
+            product.stock_qty -= op.quantity
 
+            # Record stock movement
             session.add(
                 StockMovement(
-                    product_id=item["product_id"],
+                    product_id=op.product_id,
                     movement_type=MovementType.OUT,
-                    quantity=item["quantity"],
+                    quantity=op.quantity,
                     reference=f"Order #{order.order_id}",
                     created_by=user_id,
                 )
             )
 
+            # Record sale
             session.add(
                 Sale(
                     order_id=order.order_id,
-                    product_id=item["product_id"],
-                    quantity=item["quantity"],
-                    revenue=item["subtotal"],
+                    product_id=op.product_id,
+                    quantity=op.quantity,
+                    revenue=op.subtotal,
                     sale_date=datetime.utcnow(),
                 )
             )
 
             self._logger.info(
-                f"Stock updated & sale recorded — product {item['product_id']}: "
-                f"-{item['quantity']} units",
+                f"Stock updated & sale recorded — product {op.product_id}: "
+                f"-{op.quantity} units",
                 extra=create_owasp_log_context(
                     user=user_id,
                     action="process_order_completion",

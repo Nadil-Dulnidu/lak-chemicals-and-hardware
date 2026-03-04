@@ -194,17 +194,24 @@ async def delete_supplier(
     - **supplier_id**: UUID of the supplier to delete
     - **hard**: If true, permanently delete; otherwise soft delete (default: false)
     """
-    success = await supplier_service.delete_supplier(
-        session, supplier_id, soft=not hard, user_id="admin"
-    )
-
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Supplier with ID {supplier_id} not found",
+    try:
+        success = await supplier_service.delete_supplier(
+            session, supplier_id, soft=not hard, user_id="admin"
         )
 
-    return None
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Supplier with ID {supplier_id} not found",
+            )
+
+        return None
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
 
 @router.post(

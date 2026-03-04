@@ -75,11 +75,25 @@ class OrderUpdateStatus(BaseModel):
 # ============= Order Response Schemas =============
 
 
+class OrderProductResponse(BaseModel):
+    """Schema for order product item in response"""
+
+    id: int
+    product_id: str
+    product_name: Optional[str] = None
+    quantity: int
+    unit_price: Decimal
+    subtotal: Decimal
+
+    class Config:
+        from_attributes = True
+
+
 class OrderResponse(BaseModel):
     """
     Schema for order response.
-    Includes source reference (cart_id or quotation_id) so the caller
-    can fetch item detail from the corresponding source entity.
+    Includes source reference (cart_id or quotation_id) and
+    a snapshot of ordered items via the order_products junction table.
     """
 
     order_id: int
@@ -102,6 +116,9 @@ class OrderResponse(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
+
+    # Order items snapshot
+    items: List[OrderProductResponse] = []
 
     class Config:
         from_attributes = True

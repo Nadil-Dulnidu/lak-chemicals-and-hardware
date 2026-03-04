@@ -16,7 +16,7 @@ from app.schemas.quotation_schema import (
     QuotationItemResponse,
     OrderFromQuotation,
 )
-from app.schemas.order_schema import OrderResponse
+from app.schemas.order_schema import OrderResponse, OrderProductResponse
 from app.repository.order_repo import OrderRepository
 from app.constants import OrderStatus
 from app.config.logging import get_logger, create_owasp_log_context
@@ -455,7 +455,23 @@ class QuotationService:
             if not order:
                 return None
 
-            # Return slim OrderResponse — item detail lives in the linked quotation
+            # Return OrderResponse with items from the junction table
+            items = []
+            for op in order.order_products or []:
+                product_name = None
+                if op.product:
+                    product_name = op.product.name
+                items.append(
+                    OrderProductResponse(
+                        id=op.id,
+                        product_id=str(op.product_id),
+                        product_name=product_name,
+                        quantity=op.quantity,
+                        unit_price=op.unit_price,
+                        subtotal=op.subtotal,
+                    )
+                )
+
             return OrderResponse(
                 order_id=order.order_id,
                 user_id=order.user_id,
@@ -475,6 +491,7 @@ class QuotationService:
                 phone=order.phone,
                 address=order.address,
                 city=order.city,
+                items=items,
             )
 
         except Exception as e:

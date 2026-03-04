@@ -17,7 +17,7 @@ from app.schemas.order_schema import (
     SalesSummaryResponse,
 )
 
-# from app.security.jwt import verify_clerk_token
+from app.security.jwt import verify_clerk_token
 
 router = APIRouter(prefix="/orders", tags=["Orders & Sales"])
 
@@ -61,7 +61,7 @@ async def get_all_orders(
 async def create_order_from_cart(
     order_data: OrderCreateFromCart,
     session: AsyncSession = Depends(get_async_session),
-    # user_data: dict = Depends(verify_clerk_token),
+    user_data: dict = Depends(verify_clerk_token),
 ):
     """
     Create a new order from the authenticated user's cart.

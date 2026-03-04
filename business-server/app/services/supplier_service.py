@@ -364,6 +364,7 @@ class SupplierService:
     ) -> bool:
         """
         Delete a supplier (soft or hard delete).
+        Raises ValueError if the supplier is linked to products.
 
         Args:
             session: Database session
@@ -376,6 +377,23 @@ class SupplierService:
         """
         try:
             delete_type = "soft" if soft else "hard"
+
+            # Check if supplier has linked products
+            supplier = await self.repo.get_by_id(session, supplier_id)
+            if not supplier:
+                return False
+
+            if supplier.products and len(supplier.products) > 0:
+                product_names = ", ".join([p.name for p in supplier.products[:3]])
+                suffix = (
+                    f" and {len(supplier.products) - 3} more"
+                    if len(supplier.products) > 3
+                    else ""
+                )
+                raise ValueError(
+                    f"Cannot delete supplier '{supplier.name}' because it is linked to products: {product_names}{suffix}. "
+                    f"Please unlink all products first."
+                )
 
             self._logger.info(
                 f"Attempting {delete_type} delete of supplier: {supplier_id}",
@@ -412,6 +430,8 @@ class SupplierService:
 
             return success
 
+        except ValueError:
+            raise
         except Exception as e:
             self._logger.error(
                 f"Service error deleting supplier: {str(e)}",

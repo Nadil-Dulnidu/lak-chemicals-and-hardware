@@ -9,6 +9,7 @@ from app.schemas.order_schema import (
     OrderCreateFromQuotation,
     OrderUpdateStatus,
     OrderResponse,
+    OrderProductResponse,
     OrderListResponse,
     OrderFilterParams,
 )
@@ -434,6 +435,23 @@ class OrderService:
 
     def _to_response(self, order) -> OrderResponse:
         """Convert Order ORM model → OrderResponse Pydantic schema."""
+        # Map order_products to item responses
+        items = []
+        for op in order.order_products or []:
+            product_name = None
+            if op.product:
+                product_name = op.product.name
+            items.append(
+                OrderProductResponse(
+                    id=op.id,
+                    product_id=str(op.product_id),
+                    product_name=product_name,
+                    quantity=op.quantity,
+                    unit_price=op.unit_price,
+                    subtotal=op.subtotal,
+                )
+            )
+
         return OrderResponse(
             order_id=order.order_id,
             user_id=order.user_id,
@@ -453,4 +471,5 @@ class OrderService:
             phone=order.phone,
             address=order.address,
             city=order.city,
+            items=items,
         )
