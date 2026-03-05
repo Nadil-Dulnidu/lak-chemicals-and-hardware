@@ -12,19 +12,27 @@ interface ProductPerformanceData {
   report_type: string;
   start_date: string;
   end_date: string;
-  top_performers?: {
+  top_products?: {
     product_id: string;
     product_name: string;
     category?: string;
-    total_quantity: number;
-    total_revenue: number;
-    order_count: number;
+    total_quantity_sold: number;
+    total_revenue: number | string;
+    number_of_orders: number;
+    average_order_quantity?: number | string;
   }[];
   summary?: {
-    total_products: number;
+    top_product_count: number;
     total_revenue: number;
-    total_quantity: number;
+    total_quantity_sold: number;
+    date_range_days?: number;
   };
+  category_performance?: {
+    category: string;
+    total_quantity: number;
+    total_revenue: number;
+    unique_products: number;
+  }[];
 }
 
 interface LowStockData {
@@ -32,10 +40,10 @@ interface LowStockData {
   generated_at: string;
   threshold_percentage: number;
   summary: {
-    total_alerts: number;
+    total_low_stock_products: number;
+    out_of_stock_count: number;
     critical_count: number;
-    total_restock_needed: number;
-    total_restock_value: number;
+    total_recommended_order_quantity: number;
   };
   items: {
     product_id: string;
@@ -43,9 +51,8 @@ interface LowStockData {
     category?: string;
     current_stock: number;
     reorder_level: number;
-    priority: "critical" | "high" | "medium" | "low";
-    quantity_needed: number;
-    estimated_restock_value: number;
+    stock_percentage: number;
+    recommended_order_quantity: number;
   }[];
 }
 
@@ -385,6 +392,12 @@ export function ProductPerformanceDisplay({ data }: { data: ProductPerformanceDa
         <span>
           {new Date(data.start_date).toLocaleDateString()} - {new Date(data.end_date).toLocaleDateString()}
         </span>
+        {data.summary?.date_range_days && (
+          <>
+            <span className="text-muted-foreground/50">·</span>
+            <span>{data.summary.date_range_days} days</span>
+          </>
+        )}
       </div>
 
       {/* Summary */}
@@ -398,7 +411,7 @@ export function ProductPerformanceDisplay({ data }: { data: ProductPerformanceDa
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Products Analyzed</p>
-                  <p className="text-xl font-bold text-purple-400">{data.summary.total_products}</p>
+                  <p className="text-xl font-bold text-purple-400">{data.summary.top_product_count}</p>
                 </div>
               </div>
             </CardContent>
@@ -423,8 +436,8 @@ export function ProductPerformanceDisplay({ data }: { data: ProductPerformanceDa
                   <ShoppingBag className="h-5 w-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Total Quantity</p>
-                  <p className="text-xl font-bold text-blue-400">{data.summary.total_quantity}</p>
+                  <p className="text-xs text-muted-foreground">Total Quantity Sold</p>
+                  <p className="text-xl font-bold text-blue-400">{data.summary.total_quantity_sold}</p>
                 </div>
               </div>
             </CardContent>
@@ -432,8 +445,8 @@ export function ProductPerformanceDisplay({ data }: { data: ProductPerformanceDa
         </div>
       )}
 
-      {/* Top Performers */}
-      {data.top_performers && data.top_performers.length > 0 && (
+      {/* Top Products */}
+      {data.top_products && data.top_products.length > 0 && (
         <Card className="bg-card/50 border-border/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -443,7 +456,7 @@ export function ProductPerformanceDisplay({ data }: { data: ProductPerformanceDa
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.top_performers.map((product, idx) => (
+              {data.top_products.map((product, idx) => (
                 <div key={product.product_id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                   <div className="flex items-center gap-4">
                     <div
@@ -457,14 +470,41 @@ export function ProductPerformanceDisplay({ data }: { data: ProductPerformanceDa
                     <div>
                       <p className="font-medium">{product.product_name}</p>
                       <p className="text-xs text-muted-foreground capitalize">
-                        {product.category?.replace("_", " ")} · {product.order_count} orders
+                        {product.category?.replace("_", " ")} · {product.number_of_orders} orders · avg {product.average_order_quantity} per order
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-green-400">LKR {product.total_revenue?.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{product.total_quantity} units</p>
+                    <p className="font-bold text-green-400">LKR {Number(product.total_revenue)?.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{product.total_quantity_sold} units</p>
                   </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Category Performance */}
+      {data.category_performance && data.category_performance.length > 0 && (
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-purple-400" />
+              Category Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {data.category_performance.map((cat) => (
+                <div key={cat.category} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="font-medium capitalize">{cat.category?.replace("_", " ")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {cat.total_quantity} units · {cat.unique_products} product{cat.unique_products !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <span className="font-bold text-green-400">LKR {cat.total_revenue?.toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -477,19 +517,12 @@ export function ProductPerformanceDisplay({ data }: { data: ProductPerformanceDa
 
 // ============= Low Stock Report Display =============
 export function LowStockReportDisplay({ data }: { data: LowStockData }) {
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "critical":
-        return "bg-red-500/10 text-red-400 border-red-500/30";
-      case "high":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/30";
-      case "medium":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/30";
-      case "low":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/30";
-      default:
-        return "bg-gray-500/10 text-gray-400 border-gray-500/30";
-    }
+  const getPriorityFromPercentage = (pct: number) => {
+    if (pct === 0) return { label: "Out of Stock", color: "bg-red-500/10 text-red-400 border-red-500/30" };
+    if (pct <= 10) return { label: "Critical", color: "bg-red-500/10 text-red-400 border-red-500/30" };
+    if (pct <= 30) return { label: "High", color: "bg-orange-500/10 text-orange-400 border-orange-500/30" };
+    if (pct <= 60) return { label: "Medium", color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" };
+    return { label: "Low", color: "bg-blue-500/10 text-blue-400 border-blue-500/30" };
   };
 
   return (
@@ -503,8 +536,8 @@ export function LowStockReportDisplay({ data }: { data: LowStockData }) {
                 <AlertTriangle className="h-5 w-5 text-yellow-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total Alerts</p>
-                <p className="text-xl font-bold text-yellow-400">{data.summary.total_alerts}</p>
+                <p className="text-xs text-muted-foreground">Low Stock Products</p>
+                <p className="text-xl font-bold text-yellow-400">{data.summary.total_low_stock_products}</p>
               </div>
             </div>
           </CardContent>
@@ -522,6 +555,19 @@ export function LowStockReportDisplay({ data }: { data: LowStockData }) {
             </div>
           </CardContent>
         </Card>
+        <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-orange-500/20">
+                <Package className="h-5 w-5 text-orange-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Out of Stock</p>
+                <p className="text-xl font-bold text-orange-400">{data.summary.out_of_stock_count}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -529,21 +575,8 @@ export function LowStockReportDisplay({ data }: { data: LowStockData }) {
                 <Package className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Restock Needed</p>
-                <p className="text-xl font-bold text-blue-400">{data.summary.total_restock_needed}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/20">
-                <DollarSign className="h-5 w-5 text-green-400" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Restock Value</p>
-                <p className="text-xl font-bold text-green-400">LKR {data.summary.total_restock_value?.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Total Restock Qty</p>
+                <p className="text-xl font-bold text-blue-400">{data.summary.total_recommended_order_quantity}</p>
               </div>
             </div>
           </CardContent>
@@ -576,28 +609,38 @@ export function LowStockReportDisplay({ data }: { data: LowStockData }) {
                     <th className="text-center p-3 font-medium text-muted-foreground">Priority</th>
                     <th className="text-right p-3 font-medium text-muted-foreground">Current</th>
                     <th className="text-right p-3 font-medium text-muted-foreground">Reorder Level</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Qty Needed</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Est. Cost</th>
+                    <th className="text-right p-3 font-medium text-muted-foreground">Stock %</th>
+                    <th className="text-right p-3 font-medium text-muted-foreground">Recommended Order</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.items.map((item) => (
-                    <tr key={item.product_id} className="border-b border-border/30 hover:bg-muted/30">
-                      <td className="p-3">
-                        <div>
-                          <p className="font-medium">{item.product_name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{item.category?.replace("_", " ")}</p>
-                        </div>
-                      </td>
-                      <td className="p-3 text-center">
-                        <Badge className={cn("border uppercase", getPriorityColor(item.priority))}>{item.priority}</Badge>
-                      </td>
-                      <td className={cn("p-3 text-right font-medium", item.current_stock === 0 ? "text-red-400" : "")}>{item.current_stock}</td>
-                      <td className="p-3 text-right text-muted-foreground">{item.reorder_level}</td>
-                      <td className="p-3 text-right font-medium text-orange-400">+{item.quantity_needed}</td>
-                      <td className="p-3 text-right text-green-400">LKR {item.estimated_restock_value?.toLocaleString()}</td>
-                    </tr>
-                  ))}
+                  {data.items.map((item) => {
+                    const priority = getPriorityFromPercentage(Number(item.stock_percentage));
+                    return (
+                      <tr key={item.product_id} className="border-b border-border/30 hover:bg-muted/30">
+                        <td className="p-3">
+                          <div>
+                            <p className="font-medium">{item.product_name}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{item.category?.replace("_", " ")}</p>
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge className={cn("border uppercase", priority.color)}>{priority.label}</Badge>
+                        </td>
+                        <td className={cn("p-3 text-right font-medium", item.current_stock === 0 ? "text-red-400" : "")}>{item.current_stock}</td>
+                        <td className="p-3 text-right text-muted-foreground">{item.reorder_level}</td>
+                        <td
+                          className={cn(
+                            "p-3 text-right font-medium",
+                            Number(item.stock_percentage) <= 10 ? "text-red-400" : Number(item.stock_percentage) <= 30 ? "text-orange-400" : "text-yellow-400",
+                          )}
+                        >
+                          {Number(item.stock_percentage).toFixed(1)}%
+                        </td>
+                        <td className="p-3 text-right font-medium text-orange-400">+{item.recommended_order_quantity}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

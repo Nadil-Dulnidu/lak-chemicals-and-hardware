@@ -47,7 +47,7 @@ export default function AdminDashboard() {
       if (!authToken) return;
       try {
         const [products, orders, quotations, lowStock, salesSummary] = await Promise.all([
-          productActions.getAll(0, 1),
+          productActions.getAll(),
           orderActions.getAll(0, 5, authToken),
           quotationActions.getAll(0, 100, authToken),
           productActions.getLowStockAlerts(10, 100, authToken),

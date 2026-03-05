@@ -115,15 +115,10 @@ function CheckoutContent() {
 
         orderId = createdOrder.order_id;
       } else if (cart) {
-        // Create order from cart
-        const orderItems = cart.items.map((item) => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        }));
-
-        const order = await orderActions.create(
+        // Create order from cart (new API: pass cart_id, items resolved server-side)
+        const order = await orderActions.createFromCart(
           {
-            items: orderItems,
+            cart_id: cart.cart_id,
             payment_method: selectedPayment === "cash" ? "Cash on Delivery" : selectedPayment === "card" ? "Card" : "Bank Transfer",
             notes: notes || undefined,
             customer_name: shippingAddress.name,

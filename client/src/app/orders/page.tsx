@@ -149,26 +149,66 @@ export default function OrdersPage() {
                       </div>
                     </div>
 
-                    {/* Items */}
-                    <h4 className="font-medium mb-3">Order Items</h4>
-                    <div className="space-y-3 mb-6">
-                      {order.items.map((item) => (
-                        <div key={item.order_item_id} className="flex items-center justify-between py-2">
-                          <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
-                              <Package className="h-5 w-5 text-muted-foreground/50" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{item.product_name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Qty: {item.quantity} × LKR {item.unit_price.toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="font-semibold">LKR {item.subtotal.toLocaleString()}</p>
+                    {/* Order Source */}
+                    <div className="mb-6 p-4 rounded-lg bg-muted/30">
+                      <h4 className="font-medium mb-3">Order Details</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Source</span>
+                          <Badge variant="outline">{order.cart_id ? `From Cart #${order.cart_id}` : order.quotation_id ? `From Quotation #${order.quotation_id}` : "Direct"}</Badge>
                         </div>
-                      ))}
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Payment</span>
+                          <span>{order.payment_method || "Not specified"}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Payment Status</span>
+                          <Badge className={order.payment_status === "PAID" ? "bg-green-500/10 text-green-400 border-green-500/30" : "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"}>
+                            {order.payment_status}
+                          </Badge>
+                        </div>
+                        {order.customer_name && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Customer</span>
+                            <span>{order.customer_name}</span>
+                          </div>
+                        )}
+                        {order.address && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Address</span>
+                            <span className="text-right max-w-[200px]">
+                              {order.address}
+                              {order.city ? `, ${order.city}` : ""}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Order Items */}
+                    {order.items.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="font-medium mb-3">Order Items</h4>
+                        <div className="space-y-3">
+                          {order.items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between py-2">
+                              <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+                                  <Package className="h-5 w-5 text-muted-foreground/50" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{item.product_name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Qty: {item.quantity} × LKR {item.unit_price.toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <p className="font-semibold">LKR {item.subtotal.toLocaleString()}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Summary */}
                     <div className="p-4 rounded-lg bg-muted/30">

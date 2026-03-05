@@ -199,8 +199,8 @@ export interface QuotationListResponse {
 }
 
 // ============= Order Types =============
-export interface OrderItem {
-  order_item_id: number;
+export interface OrderProductItem {
+  id: number;
   product_id: string;
   product_name?: string;
   quantity: number;
@@ -219,25 +219,27 @@ export interface Order {
   completed_date?: string;
   cancelled_date?: string;
   notes?: string;
-  items: OrderItem[];
+  // Source references (one will be set, the other null)
+  cart_id?: number | null;
+  quotation_id?: number | null;
   // Shipping Information
   customer_name?: string;
   phone?: string;
   address?: string;
   city?: string;
+  // Order items snapshot (from order_products junction table)
+  items: OrderProductItem[];
 }
 
-export interface OrderCreate {
-  items: { product_id: string; quantity: number }[];
+export interface OrderCreateFromCart {
+  cart_id: number;
   payment_method?: string;
   notes?: string;
-  // Shipping Information
   customer_name?: string;
   phone?: string;
   address?: string;
   city?: string;
 }
-
 
 export interface OrderListResponse {
   orders: Order[];
@@ -379,6 +381,17 @@ export interface SupplierListResponse {
   skip: number;
   limit: number;
   has_more: boolean;
+}
+
+export interface SupplierProduct {
+  product_id: string;
+  product_name: string;
+  supply_price?: number;
+  last_supplied_date?: string;
+}
+
+export interface SupplierDetail extends Supplier {
+  products: SupplierProduct[];
 }
 
 // ============= Payment Types =============

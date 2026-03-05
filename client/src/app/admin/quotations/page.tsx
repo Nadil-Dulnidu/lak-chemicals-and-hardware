@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Clock, CheckCircle, XCircle, Eye, Package, Filter, DollarSign } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Eye, Package, Filter, DollarSign, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,7 @@ export default function AdminQuotationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Discount state
   const [showApproveDialog, setShowApproveDialog] = useState(false);
@@ -103,6 +104,21 @@ export default function AdminQuotationsPage() {
       toast.error(error instanceof Error ? error.message : "Failed to reject quotation");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const deleteQuotation = async (quotationId: number) => {
+    if (!confirm("Are you sure you want to delete this rejected quotation?")) return;
+    setDeletingId(quotationId);
+    try {
+      await quotationActions.delete(quotationId, authToken);
+      toast.success("Quotation deleted successfully");
+      fetchQuotations();
+      if (selectedQuotation?.quotation_id === quotationId) setSelectedQuotation(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete quotation");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -225,6 +241,17 @@ export default function AdminQuotationsPage() {
                                 </Button>
                               </>
                             )}
+                            {quotation.status === "REJECTED" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                                onClick={() => deleteQuotation(quotation.quotation_id)}
+                                disabled={deletingId === quotation.quotation_id}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -306,6 +333,14 @@ export default function AdminQuotationsPage() {
                     <Button variant="destructive" className="flex-1" onClick={() => handleReject(selectedQuotation.quotation_id)} disabled={updatingId === selectedQuotation.quotation_id}>
                       <XCircle className="h-4 w-4 mr-2" />
                       Reject
+                    </Button>
+                  </div>
+                )}
+                {selectedQuotation.status === "REJECTED" && (
+                  <div className="pt-4">
+                    <Button variant="destructive" className="w-full" onClick={() => deleteQuotation(selectedQuotation.quotation_id)} disabled={deletingId === selectedQuotation.quotation_id}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Rejected Quotation
                     </Button>
                   </div>
                 )}

@@ -11,19 +11,19 @@ import type {
   CartItemCreate,
   CartItemUpdate,
   CartSummary,
-  // Update file: c:\nadil-dulnidu\lak-chemicals-and-hardware\client\src\lib\actions.ts
   Quotation,
   QuotationCreate,
   QuotationFromCart,
   OrderFromQuotation,
   QuotationListResponse,
   Order,
-  OrderCreate,
+  OrderCreateFromCart,
   OrderListResponse,
   SalesListResponse,
   SalesSummary,
   Supplier,
   SupplierCreate,
+  SupplierDetail,
   SupplierListResponse,
   SalesReportData,
   InventoryReportData,
@@ -249,8 +249,8 @@ export const orderActions = {
   getByUserId: (userId: string | undefined, skip = 0, limit = 100, token: string | null) =>
     apiClient<OrderListResponse>(`/orders/user/${userId}?skip=${skip}&limit=${limit}`, { token }),
 
-  create: (data: OrderCreate, token?: string | null) =>
-    apiClient<Order>("/orders", {
+  createFromCart: (data: OrderCreateFromCart, token?: string | null) =>
+    apiClient<Order>("/orders/from-cart", {
       method: "POST",
       body: JSON.stringify(data),
       token,
@@ -460,7 +460,7 @@ export const supplierActions = {
 
   // Get supplier with product details
   getDetail: (id: string, token?: string | null) =>
-    apiClient<Supplier & { products: { product_id: string; product_name: string; supply_price?: number }[] }>(
+    apiClient<SupplierDetail>(
       `/suppliers/${id}/detail`,
       { token }
     ),

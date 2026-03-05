@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Clock, CheckCircle, XCircle, Eye, Package, Filter } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Eye, Filter, ShoppingCart, FileText, Package, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusConfig = {
@@ -28,6 +28,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const { getToken } = useAuth();
@@ -66,6 +67,21 @@ export default function AdminOrdersPage() {
       toast.error(error instanceof Error ? error.message : "Failed to update order");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const deleteOrder = async (orderId: number) => {
+    if (!confirm("Are you sure you want to delete this cancelled order?")) return;
+    setDeletingId(orderId);
+    try {
+      await orderActions.delete(orderId, authToken);
+      toast.success("Order deleted successfully");
+      fetchOrders();
+      if (selectedOrder?.order_id === orderId) setSelectedOrder(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete order");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -139,6 +155,7 @@ export default function AdminOrdersPage() {
                     <th className="text-left p-4 font-medium text-muted-foreground">Order ID</th>
                     <th className="text-left p-4 font-medium text-muted-foreground">Customer</th>
                     <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Source</th>
                     <th className="text-right p-4 font-medium text-muted-foreground">Items</th>
                     <th className="text-right p-4 font-medium text-muted-foreground">Total</th>
                     <th className="text-center p-4 font-medium text-muted-foreground">Status</th>
@@ -155,6 +172,23 @@ export default function AdminOrdersPage() {
                         </td>
                         <td className="p-4 text-muted-foreground">{order.user_id}</td>
                         <td className="p-4 text-muted-foreground">{new Date(order.order_date).toLocaleDateString()}</td>
+                        <td className="p-4">
+                          <Badge variant="outline" className="text-xs">
+                            {order.cart_id ? (
+                              <>
+                                <ShoppingCart className="h-3 w-3 mr-1 inline" />
+                                Cart
+                              </>
+                            ) : order.quotation_id ? (
+                              <>
+                                <FileText className="h-3 w-3 mr-1 inline" />
+                                Quotation
+                              </>
+                            ) : (
+                              "Direct"
+                            )}
+                          </Badge>
+                        </td>
                         <td className="p-4 text-right">{order.items.length}</td>
                         <td className="p-4 text-right font-medium">LKR {order.total_amount.toLocaleString()}</td>
                         <td className="p-4 text-center">
@@ -189,6 +223,17 @@ export default function AdminOrdersPage() {
                                   Cancel
                                 </Button>
                               </>
+                            )}
+                            {order.status === "CANCELLED" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                                onClick={() => deleteOrder(order.order_id)}
+                                disabled={deletingId === order.order_id}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
                           </div>
                         </td>
@@ -287,29 +332,53 @@ export default function AdminOrdersPage() {
 
                 <Separator />
 
-                {/* Order Items */}
+                {/* Order Source */}
                 <div className="space-y-3">
                   <h4 className="font-medium flex items-center gap-2">
                     <span className="text-orange-400">📦</span>
-                    Items ({selectedOrder.items.length})
+                    Order Source
                   </h4>
-                  {selectedOrder.items.map((item) => (
-                    <div key={item.order_item_id} className="flex items-center justify-between py-2">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                          <Package className="h-5 w-5 text-muted-foreground/50" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.product_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.quantity} × LKR {item.unit_price.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="font-medium">LKR {item.subtotal.toLocaleString()}</p>
+                  <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Source</span>
+                      <Badge variant="outline">{selectedOrder.cart_id ? `Cart #${selectedOrder.cart_id}` : selectedOrder.quotation_id ? `Quotation #${selectedOrder.quotation_id}` : "Direct"}</Badge>
                     </div>
-                  ))}
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Payment Status</span>
+                      <Badge className={selectedOrder.payment_status === "PAID" ? "bg-green-500/10 text-green-400 border-green-500/30" : "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"}>
+                        {selectedOrder.payment_status}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
+
+                <Separator />
+
+                {/* Order Items */}
+                {selectedOrder.items.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <span className="text-orange-400">📦</span>
+                      Items ({selectedOrder.items.length})
+                    </h4>
+                    {selectedOrder.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                            <Package className="h-5 w-5 text-muted-foreground/50" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{item.product_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {item.quantity} × LKR {item.unit_price.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="font-medium">LKR {item.subtotal.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <Separator />
 
@@ -329,6 +398,14 @@ export default function AdminOrdersPage() {
                     <Button variant="destructive" className="flex-1" onClick={() => updateOrderStatus(selectedOrder.order_id, "CANCELLED")} disabled={updatingId === selectedOrder.order_id}>
                       <XCircle className="h-4 w-4 mr-2" />
                       Cancel
+                    </Button>
+                  </div>
+                )}
+                {selectedOrder.status === "CANCELLED" && (
+                  <div className="pt-4">
+                    <Button variant="destructive" className="w-full" onClick={() => deleteOrder(selectedOrder.order_id)} disabled={deletingId === selectedOrder.order_id}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Cancelled Order
                     </Button>
                   </div>
                 )}
