@@ -8,7 +8,7 @@ from logging.handlers import RotatingFileHandler
 
 def get_config_value(*keys, default=None):
     """Lazy import to avoid circular dependency"""
-    from app.config.config_loader import get_config_value as _get_config_value
+    from app.configs.config_loader import get_config_value as _get_config_value
 
     return _get_config_value(*keys, default=default)
 

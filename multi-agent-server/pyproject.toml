@@ -1,10 +1,25 @@
 [project]
 name = "multi-agent-server"
 version = "0.1.0"
-description = "Add your description here"
+description = "Multi-agent server for LAK Chemicals and Hardware"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.129.0",
+    "httpx>=0.28.1",
+    "langchain>=1.2.10",
+    "langchain-community>=0.4.1",
+    "langchain-google-genai>=4.2.1",
+    "langgraph>=1.0.9",
+    "langgraph-checkpoint-postgres>=3.0.4",
+    "pydantic-settings>=2.13.1",
+    "python-jose>=3.5.0",
     "uvicorn>=0.40.0",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
