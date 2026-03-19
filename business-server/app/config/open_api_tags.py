@@ -35,4 +35,8 @@ openapi_tags = [
         "name": "Payments",
         "description": "Operations related to payment processing via Stripe, including payment intent creation.",
     },
+    {
+        "name": "Agent Tools",
+        "description": "Operations related to agent tools, including AI insights, sales analytics, and inventory management.",
+    },
 ]
