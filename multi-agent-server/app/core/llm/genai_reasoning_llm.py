@@ -308,26 +308,3 @@ def generate_genai_reasoning_response(
     except Exception as e:
         logger.error(f"Failed to generate response: {str(e)}")
         raise
-
-
-# if __name__ == "__main__":
-#     # Example usage with error handling
-#     try:
-#         # Get model with default temperature
-#         model = get_genai_reasoning_model()
-#         print(f"Model created: {model}")
-
-#         # Generate a response
-#         response = generate_genai_reasoning_response("Hello, how are you?")
-#         print(f"Response: {response}")
-
-#         # Check model info
-#         info = get_genai_reasoning_model_info()
-#         print(f"Model info: {info}")
-
-#     except LLMConfigurationError as e:
-#         logger.error(f"Configuration error: {e}")
-#     except LLMInitializationError as e:
-#         logger.error(f"Initialization error: {e}")
-#     except Exception as e:
-#         logger.error(f"Unexpected error: {e}")

@@ -26,9 +26,13 @@ from langchain.agents.structured_output import ToolStrategy
 
 from app.configs.logging import get_logger
 from app.core.llm import get_genai_model, get_genai_reasoning_model
-from app.core.agents.prompts import SALES_ANALYTICS_AGENT_PROMPT
-from app.core.agents.schemas.sales_anaytics_agent_model import (
+from app.core.agents.prompts import (
+    SALES_ANALYTICS_AGENT_PROMPT,
+    ANALYTICS_ROUTER_AGENT_PROMPT,
+)
+from app.core.agents.schemas import (
     SalesAnalyticsAgentResponse,
+    AnalyticsRouterAgentResponse,
 )
 from app.exceptions.agents_exceptions import (
     AgentConfigurationError,
@@ -153,6 +157,7 @@ class AgentManager:
             if not self._initialized:
                 # Cached agent instances
                 self._sales_analytics_agent = None
+                self._analytics_router_agent = None
 
                 # Cached model instances
                 self._genai_model = None
@@ -216,7 +221,7 @@ class AgentManager:
                     try:
                         logger.info("Creating sales analytics agent.")
                         self._sales_analytics_agent = Agent(
-                            model=self._get_genai_model(),
+                            model=self._get_genai_reasoning_model(),
                             name="sales_analytics_agent",
                             tools=[get_sales_report],
                             prompt=SALES_ANALYTICS_AGENT_PROMPT,
@@ -227,6 +232,37 @@ class AgentManager:
                         logger.error("Failed to create sales analytics agent: %s", exc)
                         raise
         return self._sales_analytics_agent
+
+    def get_analytics_router_agent(self):
+        """
+        Get (or lazily create) the analytics router agent singleton.
+
+        Uses the reasoning GenAI model and the route_analytics_query tool.
+        Returns an AnalyticsRouterAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._analytics_router_agent is None:
+            with self._lock:
+                if self._analytics_router_agent is None:
+                    try:
+                        logger.info("Creating analytics router agent.")
+                        self._analytics_router_agent = Agent(
+                            model=self._get_genai_model(),
+                            name="analytics_router_agent",
+                            tools=[get_sales_report],
+                            prompt=ANALYTICS_ROUTER_AGENT_PROMPT,
+                            response_format=AnalyticsRouterAgentResponse,
+                        ).create_agent()
+                        logger.info("Analytics router agent created successfully.")
+                    except Exception as exc:
+                        logger.error("Failed to create analytics router agent: %s", exc)
+                        raise
+        return self._analytics_router_agent
 
     def reset(self) -> None:
         """
@@ -267,6 +303,29 @@ def get_sales_analytics_agent():
     return _manager.get_sales_analytics_agent()
 
 
+def get_analytics_router_agent():
+    """
+    Return the analytics router agent singleton.
+
+    The agent accepts a user message and returns an AnalyticsRouterAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_analytics_router_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Show me sales for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_analytics_router_agent()
+
+
 def reset_agents() -> None:
     """
     Reset all cached agents and models.
@@ -278,8 +337,20 @@ def reset_agents() -> None:
 if __name__ == "__main__":
     from langchain_core.messages import HumanMessage
 
-    agent = get_sales_analytics_agent()
+    # agent = get_sales_analytics_agent()
+    # result = agent.invoke(
+    #     {"messages": [HumanMessage(content="Show me sales for March 2026")]}
+    # )
+    # print(result)
+
+    agent = get_analytics_router_agent()
     result = agent.invoke(
-        {"messages": [HumanMessage(content="Show me sales for March 2026")]}
+        {
+            "messages": [
+                HumanMessage(
+                    content="Based on the sales data for March 2026, predict the sales for April 2026"
+                )
+            ]
+        }
     )
     print(result)
