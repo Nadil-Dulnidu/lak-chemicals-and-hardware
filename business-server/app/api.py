@@ -10,9 +10,11 @@ from app.routers.quotation_router import router as quotation_router
 from app.routers.order_router import router as order_router
 from app.routers.report_router import router as report_router
 from app.routers.stripe_router import router as stripe_router
+from app.routers.agents_tools_router import router as agents_router
 from contextlib import asynccontextmanager
 from app.utils.db import create_db_and_tables
 from app.security.jwt import verify_clerk_token
+from app.security.api_key import verify_api_key
 
 
 @asynccontextmanager
@@ -98,3 +100,4 @@ app.include_router(quotation_router, dependencies=[Depends(verify_clerk_token)])
 app.include_router(order_router)
 app.include_router(report_router, dependencies=[Depends(verify_clerk_token)])
 app.include_router(stripe_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(agents_router, dependencies=[Depends(verify_api_key)])
