@@ -31,18 +31,24 @@ from app.core.agents.prompts import (
     ANALYTICS_ROUTER_AGENT_PROMPT,
     SALES_PREDICTION_AGENT_PROMPT,
     INVENTORY_ANALYTICS_AGENT_PROMPT,
+    PRODUCT_PERFORMANCE_AGENT_PROMPT,
 )
 from app.core.agents.schemas import (
     SalesAnalyticsAgentResponse,
     AnalyticsRouterAgentResponse,
     SalesPredictionAgentResponse,
     InventoryAnalyticsAgentResponse,
+    ProductPerformanceAgentResponse,
 )
 from app.exceptions.agents_exceptions import (
     AgentConfigurationError,
     AgentInitializationError,
 )
-from app.core.agents.tools import get_sales_report, get_inventory_report
+from app.core.agents.tools import (
+    get_sales_report,
+    get_inventory_report,
+    get_product_performance_report,
+)
 
 logger = get_logger(__name__)
 
@@ -164,6 +170,7 @@ class AgentManager:
                 self._analytics_router_agent = None
                 self._sales_prediction_agent = None
                 self._inventory_analytics_agent = None
+                self._product_performance_agent = None
 
                 # Cached model instances
                 self._genai_model = None
@@ -336,6 +343,40 @@ class AgentManager:
 
         return self._inventory_analytics_agent
 
+    def get_product_performance_agent(self):
+        """
+        Get (or lazily create) the product performance agent singleton.
+
+        Uses the reasoning GenAI model and the route_analytics_query tool.
+        Returns an AnalyticsRouterAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._product_performance_agent is None:
+            with self._lock:
+                if self._product_performance_agent is None:
+                    try:
+                        logger.info("Creating product performance agent.")
+                        self._product_performance_agent = Agent(
+                            model=self._get_genai_reasoning_model(),
+                            name="product_performance_agent",
+                            tools=[get_product_performance_report],
+                            prompt=PRODUCT_PERFORMANCE_AGENT_PROMPT,
+                            response_format=ProductPerformanceAgentResponse,
+                        ).create_agent()
+                        logger.info("Product performance agent created successfully.")
+                    except Exception as exc:
+                        logger.error(
+                            "Failed to create product performance agent: %s", exc
+                        )
+                        raise
+
+        return self._product_performance_agent
+
     def reset(self) -> None:
         """
         Discard all cached agents and models so they are recreated on next access.
@@ -442,6 +483,29 @@ def get_inventory_analytics_agent():
         AgentInitializationError: If the agent cannot be created.
     """
     return _manager.get_inventory_analytics_agent()
+
+
+def get_product_performance_agent():
+    """
+    Return the product performance agent singleton.
+
+    The agent accepts a user message and returns a ProductPerformanceAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_product_performance_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Show me product performance for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_product_performance_agent()
 
 
 def reset_agents() -> None:

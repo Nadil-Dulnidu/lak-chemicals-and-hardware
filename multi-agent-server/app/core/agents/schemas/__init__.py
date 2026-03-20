@@ -10,10 +10,14 @@ from app.core.agents.schemas.sales_prediction_agent_model import (
 from app.core.agents.schemas.inventory_anlytics_agent_model import (
     InventoryAnalyticsAgentResponse,
 )
+from app.core.agents.schemas.product_performance_agnet_model import (
+    ProductPerformanceAgentResponse,
+)
 
 __all__ = [
     "SalesAnalyticsAgentResponse",
     "AnalyticsRouterAgentResponse",
     "SalesPredictionAgentResponse",
     "InventoryAnalyticsAgentResponse",
+    "ProductPerformanceAgentResponse",
 ]

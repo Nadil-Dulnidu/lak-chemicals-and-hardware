@@ -10,10 +10,14 @@ from app.core.agents.prompts.sales_prediction_agent_prompt import (
 from app.core.agents.prompts.inventory_analytics_agent_prompt import (
     INVENTORY_ANALYTICS_AGENT_PROMPT,
 )
+from app.core.agents.prompts.product_performance_agent_prompt import (
+    PRODUCT_PERFORMANCE_AGENT_PROMPT,
+)
 
 __all__ = [
     "SALES_ANALYTICS_AGENT_PROMPT",
     "ANALYTICS_ROUTER_AGENT_PROMPT",
     "SALES_PREDICTION_AGENT_PROMPT",
     "INVENTORY_ANALYTICS_AGENT_PROMPT",
+    "PRODUCT_PERFORMANCE_AGENT_PROMPT",
 ]
