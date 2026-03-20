@@ -32,6 +32,8 @@ from app.core.agents.prompts import (
     SALES_PREDICTION_AGENT_PROMPT,
     INVENTORY_ANALYTICS_AGENT_PROMPT,
     PRODUCT_PERFORMANCE_AGENT_PROMPT,
+    PRODUCT_INTELIGENCE_AGENT_PROMPT,
+    CLARIFICATION_VALIDATION_AGENT_PROMPT,
 )
 from app.core.agents.schemas import (
     SalesAnalyticsAgentResponse,
@@ -39,6 +41,8 @@ from app.core.agents.schemas import (
     SalesPredictionAgentResponse,
     InventoryAnalyticsAgentResponse,
     ProductPerformanceAgentResponse,
+    ProductIntelligenceAgentResponse,
+    ClarificationValidationAgentResponse,
 )
 from app.exceptions.agents_exceptions import (
     AgentConfigurationError,
@@ -48,6 +52,7 @@ from app.core.agents.tools import (
     get_sales_report,
     get_inventory_report,
     get_product_performance_report,
+    web_search_tool,
 )
 
 logger = get_logger(__name__)
@@ -171,6 +176,8 @@ class AgentManager:
                 self._sales_prediction_agent = None
                 self._inventory_analytics_agent = None
                 self._product_performance_agent = None
+                self._product_intelligence_agent = None
+                self._clarification_validation_agent = None
 
                 # Cached model instances
                 self._genai_model = None
@@ -377,6 +384,76 @@ class AgentManager:
 
         return self._product_performance_agent
 
+    def get_product_intelligence_agent(self):
+        """
+        Get (or lazily create) the product intelligence agent singleton.
+
+        Uses the reasoning GenAI model and the route_analytics_query tool.
+        Returns an AnalyticsRouterAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._product_intelligence_agent is None:
+            with self._lock:
+                if self._product_intelligence_agent is None:
+                    try:
+                        logger.info("Creating product intelligence agent.")
+                        self._product_intelligence_agent = Agent(
+                            model=self._get_genai_reasoning_model(),
+                            name="product_intelligence_agent",
+                            tools=[web_search_tool],
+                            prompt=PRODUCT_INTELIGENCE_AGENT_PROMPT,
+                            response_format=ProductIntelligenceAgentResponse,
+                        ).create_agent()
+                        logger.info("Product intelligence agent created successfully.")
+                    except Exception as exc:
+                        logger.error(
+                            "Failed to create product intelligence agent: %s", exc
+                        )
+                        raise
+
+        return self._product_intelligence_agent
+
+    def get_clarification_validation_agent(self):
+        """
+        Get (or lazily create) the clarification validation agent singleton.
+
+        Uses the reasoning GenAI model and the route_analytics_query tool.
+        Returns an AnalyticsRouterAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._clarification_validation_agent is None:
+            with self._lock:
+                if self._clarification_validation_agent is None:
+                    try:
+                        logger.info("Creating clarification validation agent.")
+                        self._clarification_validation_agent = Agent(
+                            model=self._get_genai_reasoning_model(),
+                            name="clarification_validation_agent",
+                            tools=[],
+                            prompt=CLARIFICATION_VALIDATION_AGENT_PROMPT,
+                            response_format=ClarificationValidationAgentResponse,
+                        ).create_agent()
+                        logger.info(
+                            "Clarification validation agent created successfully."
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            "Failed to create clarification validation agent: %s", exc
+                        )
+                        raise
+
+        return self._clarification_validation_agent
+
     def reset(self) -> None:
         """
         Discard all cached agents and models so they are recreated on next access.
@@ -508,6 +585,52 @@ def get_product_performance_agent():
     return _manager.get_product_performance_agent()
 
 
+def get_product_intelligence_agent():
+    """
+    Return the product intelligence agent singleton.
+
+    The agent accepts a user message and returns a ProductIntelligenceAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_product_intelligence_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Show me product intelligence for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_product_intelligence_agent()
+
+
+def get_clarification_validation_agent():
+    """
+    Return the clarification validation agent singleton.
+
+    The agent accepts a user message and returns a ClarificationValidationAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_clarification_validation_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Show me clarification validation for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_clarification_validation_agent()
+
+
 def reset_agents() -> None:
     """
     Reset all cached agents and models.
@@ -549,8 +672,32 @@ if __name__ == "__main__":
     # )
     # print(result)
 
-    agent = get_inventory_analytics_agent()
+    # agent = get_inventory_analytics_agent()
+    # result = agent.invoke(
+    #     {"messages": [HumanMessage(content="Show me inventory for March 2026")]}
+    # )
+    # print(result)
+
+    # agent = get_product_intelligence_agent()
+    # result = agent.invoke(
+    #     {
+    #         "messages": [
+    #             HumanMessage(
+    #                 content="I want to build a table, i already have the wood, what tools do i buy from your store?"
+    #             )
+    #         ]
+    #     }
+    # )
+    # print(result)
+
+    agent = get_clarification_validation_agent()
     result = agent.invoke(
-        {"messages": [HumanMessage(content="Show me inventory for March 2026")]}
+        {
+            "messages": [
+                HumanMessage(
+                    content="I want to build a table, I already have the wood, what tools do i buy from your store?"
+                )
+            ]
+        }
     )
     print(result)

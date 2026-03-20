@@ -13,6 +13,12 @@ from app.core.agents.schemas.inventory_anlytics_agent_model import (
 from app.core.agents.schemas.product_performance_agnet_model import (
     ProductPerformanceAgentResponse,
 )
+from app.core.agents.schemas.product_inteligence_agent_model import (
+    ProductIntelligenceAgentResponse,
+)
+from app.core.agents.schemas.clarification_validation_agent_model import (
+    ClarificationValidationAgentResponse,
+)
 
 __all__ = [
     "SalesAnalyticsAgentResponse",
@@ -20,4 +26,6 @@ __all__ = [
     "SalesPredictionAgentResponse",
     "InventoryAnalyticsAgentResponse",
     "ProductPerformanceAgentResponse",
+    "ProductIntelligenceAgentResponse",
+    "ClarificationValidationAgentResponse",
 ]

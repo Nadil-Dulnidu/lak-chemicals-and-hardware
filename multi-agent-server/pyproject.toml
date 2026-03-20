@@ -5,6 +5,7 @@ description = "Multi-agent server for LAK Chemicals and Hardware"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "ddgs>=9.11.4",
     "fastapi>=0.129.0",
     "httpx>=0.28.1",
     "langchain>=1.2.10",
