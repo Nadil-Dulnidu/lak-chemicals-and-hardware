@@ -34,6 +34,7 @@ from app.core.agents.prompts import (
     PRODUCT_PERFORMANCE_AGENT_PROMPT,
     PRODUCT_INTELIGENCE_AGENT_PROMPT,
     CLARIFICATION_VALIDATION_AGENT_PROMPT,
+    PRODUCT_RETRIEVAL_SUGGESTION_AGENT_PROMPT,
 )
 from app.core.agents.schemas import (
     SalesAnalyticsAgentResponse,
@@ -43,6 +44,7 @@ from app.core.agents.schemas import (
     ProductPerformanceAgentResponse,
     ProductIntelligenceAgentResponse,
     ClarificationValidationAgentResponse,
+    ProductSuggestionAgentResponse,
 )
 from app.exceptions.agents_exceptions import (
     AgentConfigurationError,
@@ -53,6 +55,7 @@ from app.core.agents.tools import (
     get_inventory_report,
     get_product_performance_report,
     web_search_tool,
+    fetch_product_list,
 )
 
 logger = get_logger(__name__)
@@ -178,6 +181,7 @@ class AgentManager:
                 self._product_performance_agent = None
                 self._product_intelligence_agent = None
                 self._clarification_validation_agent = None
+                self._product_suggestion_agent = None
 
                 # Cached model instances
                 self._genai_model = None
@@ -454,6 +458,40 @@ class AgentManager:
 
         return self._clarification_validation_agent
 
+    def get_product_suggestion_agent(self):
+        """
+        Get (or lazily create) the product suggestion agent singleton.
+
+        Uses the normal GenAI model and the get_product_suggestion tool.
+        Returns an ProductSuggestionAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._product_suggestion_agent is None:
+            with self._lock:
+                if self._product_suggestion_agent is None:
+                    try:
+                        logger.info("Creating product suggestion agent.")
+                        self._product_suggestion_agent = Agent(
+                            model=self._get_genai_model(),
+                            name="product_suggestion_agent",
+                            tools=[fetch_product_list],
+                            prompt=PRODUCT_RETRIEVAL_SUGGESTION_AGENT_PROMPT,
+                            response_format=ProductSuggestionAgentResponse,
+                        ).create_agent()
+                        logger.info("Product suggestion agent created successfully.")
+                    except Exception as exc:
+                        logger.error(
+                            "Failed to create product suggestion agent: %s", exc
+                        )
+                        raise
+
+        return self._product_suggestion_agent
+
     def reset(self) -> None:
         """
         Discard all cached agents and models so they are recreated on next access.
@@ -629,6 +667,29 @@ def get_clarification_validation_agent():
         AgentInitializationError: If the agent cannot be created.
     """
     return _manager.get_clarification_validation_agent()
+
+
+def get_product_suggestion_agent():
+    """
+    Return the product suggestion agent singleton.
+
+    The agent accepts a user message and returns a ProductSuggestionAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_product_suggestion_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Show me product suggestion for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_product_suggestion_agent()
 
 
 def reset_agents() -> None:

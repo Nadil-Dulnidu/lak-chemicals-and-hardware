@@ -9,6 +9,8 @@ from app.core.graph.state import GraphState
 from app.core.graph.nodes import (
     ClarificationValidationNode,
     AskInterruptQuestionsNode,
+    ProductIntelligenceAgentNode,
+    ProductSuggestionAgentNode,
 )
 
 
@@ -34,6 +36,8 @@ class GraphBuilder:
     def __init__(
         self,
         clarification_validation_agent,
+        product_intelligence_agent,
+        product_suggestion_agent,
         checkpointer: Optional[BaseCheckpointSaver] = None,
     ):
         """
@@ -53,6 +57,10 @@ class GraphBuilder:
                 clarification_validation_agent
             ),
             "ask_interrupt_questions": AskInterruptQuestionsNode(),
+            "product_intelligence": ProductIntelligenceAgentNode(
+                product_intelligence_agent
+            ),
+            "product_suggestion": ProductSuggestionAgentNode(product_suggestion_agent),
         }
 
         logger.info(
@@ -78,11 +86,15 @@ class GraphBuilder:
             self._should_ask_more_questions,
             {
                 True: "ask_interrupt_questions",
-                False: END,
+                False: "product_intelligence",
             },
         )
 
         self.state_graph.add_edge("ask_interrupt_questions", "clarification_validation")
+
+        self.state_graph.add_edge("product_intelligence", "product_suggestion")
+
+        self.state_graph.add_edge("product_suggestion", END)
 
         logger.debug("Graph edges configured")
 

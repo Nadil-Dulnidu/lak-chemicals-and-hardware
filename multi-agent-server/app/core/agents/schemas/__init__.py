@@ -20,6 +20,10 @@ from app.core.agents.schemas.clarification_validation_agent_model import (
     ClarificationValidationAgentResponse,
 )
 
+from app.core.agents.schemas.product_retrevel_suggestion_agent_model import (
+    ProductSuggestionAgentResponse,
+)
+
 __all__ = [
     "SalesAnalyticsAgentResponse",
     "AnalyticsRouterAgentResponse",
@@ -28,4 +32,5 @@ __all__ = [
     "ProductPerformanceAgentResponse",
     "ProductIntelligenceAgentResponse",
     "ClarificationValidationAgentResponse",
+    "ProductSuggestionAgentResponse",
 ]
