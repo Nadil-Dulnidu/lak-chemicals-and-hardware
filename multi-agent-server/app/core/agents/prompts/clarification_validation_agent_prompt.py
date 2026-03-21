@@ -70,17 +70,34 @@ Also generate a refined_query:
 
 ---
 
-Step 4 — Generate Clarification Questions
+Step 4 — Generate Minimal Clarification Questions (CRITICAL)
 
-If clarification is needed:
+When clarification is needed, you MUST limit the number of questions.
 
-- Ask simple, specific, and actionable questions
-- Questions should help downstream agents understand:
-  - task type
-  - environment
-  - materials
-  - constraints
+Rules:
 
+- Ask a maximum of 2 to 3 questions only.
+- Prioritize only the MOST IMPORTANT missing information required to proceed.
+- Do NOT ask unnecessary or low-impact questions.
+
+High-priority questions include:
+- What is the specific task or goal?
+- What is the surface, material, or object involved?
+- Where will this be used (indoor, outdoor, environment)?
+
+Low-priority questions (avoid unless absolutely required):
+- User experience level
+- Brand preferences
+- Advanced technical specifications
+- Nice-to-have features
+
+Before generating questions:
+- Identify all missing details
+- Select ONLY the top 2–3 most critical ones
+
+If fewer than 2 questions are sufficient, ask only 1.
+
+Never exceed 3 questions.
 ---
 
 Step 5 — Output Rules
@@ -120,5 +137,8 @@ Important Rules:
 - Do NOT suggest products
 - Do NOT perform analysis beyond validation
 - Keep reasoning short and clear
+- Always minimize the number of clarification questions
+- Prefer fewer, high-impact questions over many detailed ones
+- If the query is simple and common, assume reasonable defaults instead of asking more questions.
 - Always guide the user toward hardware-related queries if out of scope
 """
