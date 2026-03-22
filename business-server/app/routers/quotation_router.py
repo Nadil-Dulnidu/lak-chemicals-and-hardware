@@ -14,7 +14,7 @@ from app.schemas.quotation_schema import (
     OrderFromQuotation,
 )
 from app.schemas.order_schema import OrderResponse
-from app.security.jwt import verify_clerk_token
+from app.security.jwt import verify_clerk_token, require_admin
 
 router = APIRouter(prefix="/quotations", tags=["Quotations"])
 
@@ -32,7 +32,8 @@ async def get_all_quotations(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get all quotations.
@@ -217,6 +218,7 @@ async def update_quotation_status(
     status_data: QuotationUpdateStatus,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Update quotation status.
@@ -303,6 +305,7 @@ async def delete_quotation(
     quotation_id: int,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Delete a quotation.

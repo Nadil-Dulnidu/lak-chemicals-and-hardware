@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 import uuid
 
 from app.utils.db import get_async_session
@@ -12,10 +11,9 @@ from app.schemas.supplier_schema import (
     SupplierListResponse,
     SupplierFilterParams,
     SupplierProductLink,
-    SupplierProductUnlink,
     SupplierDetailResponse,
 )
-
+from app.security.jwt import verify_clerk_token, require_admin
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
 # Initialize service
@@ -32,7 +30,8 @@ supplier_service = SupplierService()
 async def create_supplier(
     supplier_data: SupplierCreate,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Create a new supplier.
@@ -45,7 +44,7 @@ async def create_supplier(
     """
     try:
         supplier = await supplier_service.create_supplier(
-            session, supplier_data, user_id="admin"  # Replace with actual user_id
+            session, supplier_data, user_id=user_data.get("sub")
         )
 
         if not supplier:
@@ -69,6 +68,8 @@ async def create_supplier(
 async def get_supplier(
     supplier_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get a supplier by its ID.
@@ -76,7 +77,7 @@ async def get_supplier(
     - **supplier_id**: UUID of the supplier
     """
     supplier = await supplier_service.get_supplier(
-        session, supplier_id, user_id="admin"
+        session, supplier_id, user_id=user_data.get("sub")
     )
 
     if not supplier:
@@ -97,6 +98,8 @@ async def get_supplier(
 async def get_supplier_detail(
     supplier_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get a supplier with detailed product information.
@@ -107,7 +110,7 @@ async def get_supplier_detail(
     including supply prices and last supplied dates.
     """
     supplier = await supplier_service.get_supplier_detail(
-        session, supplier_id, user_id="admin"
+        session, supplier_id, user_id=user_data.get("sub")
     )
 
     if not supplier:
@@ -130,6 +133,8 @@ async def get_all_suppliers(
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     include_inactive: bool = Query(False, description="Include inactive suppliers"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get all suppliers with pagination.
@@ -139,7 +144,7 @@ async def get_all_suppliers(
     - **include_inactive**: Include inactive suppliers (default: false)
     """
     return await supplier_service.get_all_suppliers(
-        session, skip, limit, include_inactive, user_id="admin"
+        session, skip, limit, include_inactive, user_id=user_data.get("sub")
     )
 
 
@@ -153,6 +158,8 @@ async def update_supplier(
     supplier_id: uuid.UUID,
     update_data: SupplierUpdate,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Update a supplier.
@@ -162,7 +169,7 @@ async def update_supplier(
     """
     try:
         supplier = await supplier_service.update_supplier(
-            session, supplier_id, update_data, user_id="admin"
+            session, supplier_id, update_data, user_id=user_data.get("sub")
         )
 
         if not supplier:
@@ -187,6 +194,8 @@ async def delete_supplier(
     supplier_id: uuid.UUID,
     hard: bool = Query(False, description="Perform hard delete instead of soft delete"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Delete a supplier.
@@ -196,7 +205,7 @@ async def delete_supplier(
     """
     try:
         success = await supplier_service.delete_supplier(
-            session, supplier_id, soft=not hard, user_id="admin"
+            session, supplier_id, soft=not hard, user_id=user_data.get("sub")
         )
 
         if not success:
@@ -223,6 +232,8 @@ async def delete_supplier(
 async def filter_suppliers(
     filter_params: SupplierFilterParams,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Filter suppliers based on criteria.
@@ -233,7 +244,7 @@ async def filter_suppliers(
     - **limit**: Maximum records to return
     """
     return await supplier_service.filter_suppliers(
-        session, filter_params, user_id="admin"
+        session, filter_params, user_id=user_data.get("sub")
     )
 
 
@@ -248,6 +259,8 @@ async def search_suppliers(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Search suppliers by name, email, or contact person.
@@ -257,7 +270,7 @@ async def search_suppliers(
     - **limit**: Maximum records to return
     """
     return await supplier_service.search_suppliers(
-        session, q, skip, limit, user_id="admin"
+        session, q, skip, limit, user_id=user_data.get("sub")
     )
 
 
@@ -271,6 +284,8 @@ async def link_product_to_supplier(
     supplier_id: uuid.UUID,
     link_data: SupplierProductLink,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Link a product to a supplier.
@@ -283,7 +298,7 @@ async def link_product_to_supplier(
     multiple products and one product to come from multiple suppliers.
     """
     success = await supplier_service.link_product_to_supplier(
-        session, supplier_id, link_data, user_id="admin"
+        session, supplier_id, link_data, user_id=user_data.get("sub")
     )
 
     if not success:
@@ -305,6 +320,8 @@ async def unlink_product_from_supplier(
     supplier_id: uuid.UUID,
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Unlink a product from a supplier.
@@ -315,7 +332,7 @@ async def unlink_product_from_supplier(
     This removes the many-to-many relationship between the supplier and product.
     """
     success = await supplier_service.unlink_product_from_supplier(
-        session, supplier_id, product_id, user_id="admin"
+        session, supplier_id, product_id, user_id=user_data.get("sub")
     )
 
     if not success:

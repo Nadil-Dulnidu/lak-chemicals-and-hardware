@@ -17,7 +17,7 @@ from app.schemas.order_schema import (
     SalesSummaryResponse,
 )
 
-from app.security.jwt import verify_clerk_token
+from app.security.jwt import verify_clerk_token, require_admin
 
 router = APIRouter(prefix="/orders", tags=["Orders & Sales"])
 
@@ -39,6 +39,7 @@ async def get_all_orders(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(require_admin),
 ):
     """
     Get all orders.
@@ -266,6 +267,7 @@ async def delete_order(
     order_id: int,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Delete an order.

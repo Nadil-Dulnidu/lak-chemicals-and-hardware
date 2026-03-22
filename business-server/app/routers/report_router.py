@@ -20,6 +20,7 @@ from app.schemas.report_schema import (
     ProductPerformanceData,
     LowStockReportData,
 )
+from app.security.jwt import verify_clerk_token, require_admin
 
 router = APIRouter(prefix="/reports", tags=["Reports & Analytics"])
 
@@ -39,7 +40,8 @@ report_service = ReportService()
 async def create_report(
     report_data: ReportCreate,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Create a new report configuration.
@@ -51,7 +53,7 @@ async def create_report(
 
     The configuration can be used to regenerate the report later.
     """
-    user_id = "admin"  # Replace with actual user_id from authentication
+    user_id = user_data.get("sub")
 
     report = await report_service.create_report(session, user_id, report_data)
 
@@ -73,6 +75,8 @@ async def create_report(
 async def get_report(
     report_id: int,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get a report configuration by its ID.
@@ -102,6 +106,8 @@ async def get_all_reports(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get all saved report configurations.
@@ -123,6 +129,8 @@ async def get_all_reports(
 async def filter_reports(
     filter_params: ReportFilterParams,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Filter report configurations based on criteria.
@@ -147,6 +155,8 @@ async def update_report(
     report_id: int,
     update_data: ReportUpdate,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Update a report configuration.
@@ -178,6 +188,8 @@ async def update_report(
 async def delete_report(
     report_id: int,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Delete a report configuration.
@@ -207,6 +219,8 @@ async def run_saved_report(
     report_id: int,
     overrides: Optional[RunReportParams] = None,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Run a saved report configuration to generate report data.
@@ -252,6 +266,8 @@ async def run_saved_report(
 async def generate_sales_report(
     params: SalesReportParams,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Generate a sales report based on parameters.
@@ -288,6 +304,8 @@ async def generate_sales_report(
 async def generate_inventory_report(
     params: InventoryReportParams,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Generate an inventory report showing current stock levels.
@@ -322,6 +340,8 @@ async def generate_inventory_report(
 async def generate_product_performance_report(
     params: ProductPerformanceParams,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Generate a product performance report showing best sellers.
@@ -358,6 +378,8 @@ async def generate_product_performance_report(
 async def generate_low_stock_report(
     params: LowStockReportParams,
     session: AsyncSession = Depends(get_async_session),
+    _user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Generate a low stock report for inventory management.

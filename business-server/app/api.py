@@ -93,11 +93,11 @@ async def health():
 
 # Include routers
 app.include_router(product_router)
-app.include_router(supplier_router, dependencies=[Depends(verify_clerk_token)])
-app.include_router(inventory_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(supplier_router)
+app.include_router(inventory_router)
 app.include_router(cart_router)
-app.include_router(quotation_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(quotation_router)
 app.include_router(order_router)
-app.include_router(report_router, dependencies=[Depends(verify_clerk_token)])
+app.include_router(report_router)
 app.include_router(stripe_router, dependencies=[Depends(verify_clerk_token)])
 app.include_router(agents_router, dependencies=[Depends(verify_api_key)])

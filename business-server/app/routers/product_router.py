@@ -20,12 +20,11 @@ from app.schemas.product_schema import (
     ProductUpdate,
     ProductResponse,
     ProductListResponse,
-    ProductFilterParams,
     LowStockAlert,
     ProductCategoryEnum,
 )
 from app.utils.image_upload import upload_image
-from app.security.jwt import verify_clerk_token
+from app.security.jwt import verify_clerk_token, require_admin
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -51,6 +50,7 @@ async def create_product(
     image: Optional[UploadFile] = File(None),
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Create a new product with optional image upload.
@@ -164,6 +164,7 @@ async def update_product(
     update_data: ProductUpdate,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Update a product.
@@ -173,7 +174,7 @@ async def update_product(
     """
     try:
         product = await product_service.update_product(
-            session, product_id, update_data, user_id="admin"
+            session, product_id, update_data, user_id=user_data.get("sub")
         )
 
         if not product:
@@ -199,6 +200,7 @@ async def delete_product(
     hard: bool = Query(False, description="Perform hard delete instead of soft delete"),
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Delete a product.
@@ -207,7 +209,7 @@ async def delete_product(
     - **hard**: If true, permanently delete; otherwise soft delete (default: false)
     """
     success = await product_service.delete_product(
-        session, product_id, soft=not hard, user_id="admin"
+        session, product_id, soft=not hard, user_id=user_data.get("sub")
     )
 
     if not success:
@@ -278,6 +280,7 @@ async def get_low_stock_alerts(
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get products with low stock.
@@ -290,5 +293,5 @@ async def get_low_stock_alerts(
     - Quantity needed to reach threshold
     """
     return await product_service.get_low_stock_alerts(
-        session, threshold, limit, user_id="admin"
+        session, threshold, limit, user_id=user_data.get("sub")
     )

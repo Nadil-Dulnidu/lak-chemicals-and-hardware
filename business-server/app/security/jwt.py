@@ -1,6 +1,6 @@
 from jose import jwt
 from jose.exceptions import JWTError
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 import httpx
 from app.config.logging import get_logger
 
@@ -80,3 +80,30 @@ async def verify_clerk_token(request: Request):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
         )
+
+
+def role_from_claims(payload: dict) -> str | None:
+    """
+    Resolve app role from Clerk JWT claims.
+
+    Supports a top-level `role` claim (custom session template) and
+    `public_metadata.role` (Clerk public metadata on the user).
+    """
+    r = payload.get("role")
+    if r is not None and r != "":
+        return str(r)
+    pm = payload.get("public_metadata")
+    if isinstance(pm, dict):
+        r = pm.get("role")
+        if r is not None and r != "":
+            return str(r)
+    return None
+
+
+async def require_admin(user_data: dict = Depends(verify_clerk_token)) -> dict:
+    if role_from_claims(user_data) != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return user_data

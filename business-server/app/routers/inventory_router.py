@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 import uuid
 
 from app.utils.db import get_async_session
@@ -13,6 +12,7 @@ from app.schemas.inventory_schema import (
     InventoryLevelResponse,
     StockAdjustmentRequest,
 )
+from app.security.jwt import verify_clerk_token, require_admin
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
@@ -30,7 +30,8 @@ inventory_service = InventoryService()
 async def update_stock(
     movement_data: StockMovementCreate,
     session: AsyncSession = Depends(get_async_session),
-    # user_id: str = Depends(get_current_user)  # Add authentication later
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Record a stock movement (IN or OUT).
@@ -53,7 +54,7 @@ async def update_stock(
     """
     try:
         movement = await inventory_service.record_stock_movement(
-            session, movement_data, user_id="admin"  # Replace with actual user_id
+            session, movement_data, user_id=user_data.get("sub")
         )
 
         if not movement:
@@ -77,6 +78,8 @@ async def update_stock(
 async def get_movement(
     movement_id: int,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get a stock movement by its ID.
@@ -84,7 +87,7 @@ async def get_movement(
     - **movement_id**: ID of the movement
     """
     movement = await inventory_service.get_movement(
-        session, movement_id, user_id="admin"
+        session, movement_id, user_id=user_data.get("sub")
     )
 
     if not movement:
@@ -106,6 +109,8 @@ async def get_all_movements(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get all stock movements with pagination.
@@ -116,7 +121,7 @@ async def get_all_movements(
     Returns movements ordered by date (most recent first).
     """
     return await inventory_service.get_all_movements(
-        session, skip, limit, user_id="admin"
+        session, skip, limit, user_id=user_data.get("sub")
     )
 
 
@@ -129,6 +134,8 @@ async def get_all_movements(
 async def filter_movements(
     filter_params: StockMovementFilterParams,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Filter stock movements based on criteria.
@@ -141,7 +148,7 @@ async def filter_movements(
     - **limit**: Maximum records to return
     """
     return await inventory_service.filter_movements(
-        session, filter_params, user_id="admin"
+        session, filter_params, user_id=user_data.get("sub")
     )
 
 
@@ -156,6 +163,8 @@ async def get_product_movements(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get all stock movements for a specific product.
@@ -167,7 +176,7 @@ async def get_product_movements(
     Returns complete movement history for the product.
     """
     return await inventory_service.get_product_movements(
-        session, product_id, skip, limit, user_id="admin"
+        session, product_id, skip, limit, user_id=user_data.get("sub")
     )
 
 
@@ -180,6 +189,8 @@ async def get_product_movements(
 async def get_inventory_level(
     product_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Get current inventory level for a product.
@@ -193,7 +204,7 @@ async def get_inventory_level(
     - Last movement date
     """
     level = await inventory_service.get_inventory_level(
-        session, product_id, user_id="admin"
+        session, product_id, user_id=user_data.get("sub")
     )
 
     if not level:
@@ -214,6 +225,8 @@ async def get_inventory_level(
 async def delete_movement(
     movement_id: int,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Delete a historical stock movement record.
@@ -225,7 +238,7 @@ async def delete_movement(
     Use stock adjustment endpoint to correct stock levels.
     """
     success = await inventory_service.delete_movement(
-        session, movement_id, user_id="admin"
+        session, movement_id, user_id=user_data.get("sub")
     )
 
     if not success:
@@ -246,6 +259,8 @@ async def delete_movement(
 async def adjust_stock(
     adjustment: StockAdjustmentRequest,
     session: AsyncSession = Depends(get_async_session),
+    user_data: dict = Depends(verify_clerk_token),
+    _admin_data: dict = Depends(require_admin)
 ):
     """
     Adjust stock to a specific target quantity.
@@ -264,7 +279,7 @@ async def adjust_stock(
     """
     try:
         movement = await inventory_service.adjust_stock(
-            session, adjustment, user_id="admin"
+            session, adjustment, user_id=user_data.get("sub")
         )
 
         if not movement:
