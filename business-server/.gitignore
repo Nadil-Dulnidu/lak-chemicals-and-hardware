@@ -220,3 +220,7 @@ __marimo__/
 config.json
 
 *.db
+
+*.sqlite3
+
+.env*

@@ -1,29 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, Dict, Any
+from typing import  List
 
 from app.utils.db import get_async_session
 from app.services.report_service import ReportService
+from app.services.product_service import ProductService
+from app.services.cart_service import CartService
 from app.schemas.report_schema import (
-    ReportCreate,
-    ReportUpdate,
-    ReportResponse,
-    ReportListResponse,
-    ReportFilterParams,
     SalesReportParams,
     InventoryReportParams,
     ProductPerformanceParams,
-    LowStockReportParams,
-    RunReportParams,
     SalesReportData,
     InventoryReportData,
     ProductPerformanceData,
-    LowStockReportData,
 )
+from app.schemas.product_schema import ProductListResponse
+from app.schemas.cart_schema import CartItemCreate, CartResponse
 
 router = APIRouter(prefix="/tools", tags=["Agent Tools"])
 
 report_service = ReportService()
+product_service = ProductService()
+cart_service = CartService()
 
 
 @router.post(
@@ -124,3 +122,64 @@ async def generate_product_performance_report(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating product performance report: {str(e)}",
         )
+
+
+@router.get(
+    "/products",
+    response_model=ProductListResponse,
+    summary="Get all products",
+    description="Retrieve all products with pagination",
+)
+async def get_all_products(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    include_inactive: bool = Query(False, description="Include inactive products"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get all products with pagination.
+
+    - **skip**: Number of records to skip (default: 0)
+    - **limit**: Maximum records to return (default: 100, max: 500)
+    - **include_inactive**: Include inactive products (default: false)
+    """
+    return await product_service.get_all_products(
+        session, skip, limit, include_inactive, user_id="admin"
+    )
+
+
+@router.post(
+    "/add-to-cart",
+    response_model=CartResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add item to cart",
+    description="Add a product to the user's shopping cart",
+)
+async def add_item_to_cart(
+    item_data: List[CartItemCreate],
+    user_id: str = Query(..., description="User ID"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Add an item to the cart.
+
+    - **product_id**: Product UUID (required)
+    - **quantity**: Quantity to add (required, must be positive)
+
+    If the product already exists in the cart, the quantity will be added to the existing quantity.
+    """
+    try:
+        cart = None
+        for item in item_data:
+            cart = await cart_service.add_item_to_cart(session, user_id, item)
+
+        if not cart:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to add item to cart",
+            )
+
+        return cart
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
