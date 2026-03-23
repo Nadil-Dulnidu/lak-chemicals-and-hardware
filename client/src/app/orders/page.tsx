@@ -38,6 +38,8 @@ export default function OrdersPage() {
     fetchToken();
   }, [getToken]);
 
+  console.log("AUth Token:", authToken);
+
   const fetchOrders = useCallback(async () => {
     if (!authToken || !user?.id) return;
     try {

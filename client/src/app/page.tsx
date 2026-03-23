@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { Paintbrush, Zap, Droplets, FlaskConical, Shield, ArrowRight, Truck, Clock, BadgeCheck, ChevronRight, Wrench } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 
 const categories = [
   { icon: FlaskConical, name: "Chemicals", slug: "chemicals", color: "from-purple-500 to-purple-600" },
@@ -30,6 +31,18 @@ const features = [
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await getToken({ template: "lak-chemicles-and-hardware" });
+      setAuthToken(token);
+    };
+    fetchToken();
+  }, [getToken]);
+
+  console.log("Auth Token:", authToken);
 
   useEffect(() => {
     const fetchProducts = async () => {

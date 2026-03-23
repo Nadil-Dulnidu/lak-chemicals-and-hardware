@@ -42,6 +42,8 @@ export default function AdminDashboard() {
     fetchToken();
   }, [getToken]);
 
+  console.log("Admin Dashboard - Auth Token:", authToken);
+
   useEffect(() => {
     const fetchStats = async () => {
       if (!authToken) return;
