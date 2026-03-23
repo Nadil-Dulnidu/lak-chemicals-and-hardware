@@ -12,7 +12,7 @@ class AskInterruptQuestionsNode(BaseNode):
     def execute(self, state: GraphState) -> GraphState:
         self._log_start()
 
-        interruption_question = state.get("interrupt_question", "")
+        interruption_question = state.get("interrupt_question", None)
 
         if interruption_question:
             self.logger.info(
@@ -24,7 +24,7 @@ class AskInterruptQuestionsNode(BaseNode):
 
             return {
                 "messages": [HumanMessage(content=user_response)],
-                "interrupt_question": "",
+                "interrupt_question": None,
             }
         else:
             self._log_end("No interruption needed")

@@ -24,6 +24,14 @@ from app.core.agents.schemas.product_retrevel_suggestion_agent_model import (
     ProductSuggestionAgentResponse,
 )
 
+from app.core.agents.schemas.add_to_cart_agent_model import (
+    CartAgentResponse as AddToCartAgentResponse,
+)
+
+from app.core.agents.schemas.user_confirmation_agnet_model import (
+    UserConfirmationAgentResponse,
+)
+
 __all__ = [
     "SalesAnalyticsAgentResponse",
     "AnalyticsRouterAgentResponse",
@@ -33,4 +41,6 @@ __all__ = [
     "ProductIntelligenceAgentResponse",
     "ClarificationValidationAgentResponse",
     "ProductSuggestionAgentResponse",
+    "AddToCartAgentResponse",
+    "UserConfirmationAgentResponse",
 ]

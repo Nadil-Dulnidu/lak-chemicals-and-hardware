@@ -3,7 +3,13 @@ from app.configs.logging import get_logger
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import HumanMessage
 
-from app.core.agents.agents import get_clarification_validation_agent
+from app.core.agents.agents import (
+    get_clarification_validation_agent,
+    get_user_confirmation_agent,
+    get_product_intelligence_agent,
+    get_product_suggestion_agent,
+    get_add_to_cart_agent,
+)
 from app.core.graph.state import GraphState
 from app.core.graph.graph_builder import GraphBuilder
 
@@ -65,11 +71,19 @@ class GraphExecuter:
 
         # Initialize dependencies
         clarification_validation_agent = get_clarification_validation_agent()
+        user_confirmation_agent = get_user_confirmation_agent()
+        product_intelligence_agent = get_product_intelligence_agent()
+        product_suggestion_agent = get_product_suggestion_agent()
+        add_to_cart_agent = get_add_to_cart_agent()
         checkpointer = checkpointer or InMemorySaver()
 
         # Build the graph
         builder = GraphBuilder(
             clarification_validation_agent=clarification_validation_agent,
+            product_intelligence_agent=product_intelligence_agent,
+            product_suggestion_agent=product_suggestion_agent,
+            user_confirmation_agent=user_confirmation_agent,
+            add_to_cart_agent=add_to_cart_agent,
             checkpointer=checkpointer,
         )
 
@@ -130,10 +144,31 @@ if __name__ == "__main__":
     config = {"configurable": {"thread_id": "thread-1"}}
 
     # Initial user message
-    user_input = input("👤 What job are you applying for? ")
-    if user_input.lower() == "quit":
-        print("Exiting...")
-        exit(0)
+    # user_input = input("👤 What job are you applying for? ")
+    # if user_input.lower() == "quit":
+    #     print("Exiting...")
+    #     exit(0)
+
+    user_input = """
+            [
+        {
+            "product_id": "9e5e65dc-563d-4c80-a7a4-c01e2beb02df",
+            "name": "Heavy Duty Wrench",
+            "category": "tools",
+            "price": 1200,
+            "stock_qty": 15,
+            "short_reason": "Suitable for tightening and loosening bolts and nuts in plumbing and repair tasks."
+        },
+        {
+            "product_id": "15b11d65-835d-4d2c-89c8-4ef24e350def",
+            "name": "Adjustable Hammer Drill",
+            "category": "tools",
+            "price": 8500,
+            "stock_qty": 8,
+            "short_reason": "Ideal for drilling into concrete and hard surfaces with high torque and impact mode."
+        }
+        ]
+    """
 
     # Create initial state
     initial_state = GraphState(messages=[HumanMessage(content=user_input)])
@@ -213,22 +248,22 @@ if __name__ == "__main__":
                 if last_state and isinstance(last_state, dict):
                     print("\n📋 Final State:")
 
-                    clarification_validation_response = last_state.get(
-                        "clarification_validation_response"
+                    user_confirmation_response = last_state.get(
+                        "user_confirmation_response"
                     )
-                    if clarification_validation_response:
+                    if user_confirmation_response:
                         print("\n✓ Requirements gathered:")
-                        if hasattr(clarification_validation_response, "model_dump"):
+                        if hasattr(user_confirmation_response, "model_dump"):
                             import json
 
                             print(
                                 json.dumps(
-                                    clarification_validation_response.model_dump(),
+                                    user_confirmation_response.model_dump(),
                                     indent=2,
                                 )
                             )
                         else:
-                            print(f"{clarification_validation_response}")
+                            print(f"{user_confirmation_response}")
 
                     # interview_strategy = last_state.get("interview_strategy")
                     # if interview_strategy:

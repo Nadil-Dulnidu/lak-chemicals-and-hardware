@@ -5,6 +5,7 @@ from app.core.agents.tools.product_performance_tool import (
 )
 from app.core.agents.tools.web_search_tool import web_search_tool
 from app.core.agents.tools.product_list_tool import fetch_product_list
+from app.core.agents.tools.add_to_cart_tool import add_to_cart_tool
 
 __all__ = [
     "get_sales_report",
@@ -12,4 +13,5 @@ __all__ = [
     "get_product_performance_report",
     "web_search_tool",
     "fetch_product_list",
+    "add_to_cart_tool",
 ]

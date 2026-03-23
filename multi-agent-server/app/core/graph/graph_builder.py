@@ -11,6 +11,9 @@ from app.core.graph.nodes import (
     AskInterruptQuestionsNode,
     ProductIntelligenceAgentNode,
     ProductSuggestionAgentNode,
+    UserConfirmationNode,
+    AddToCartGatewayNode,
+    AddToCartNode,
 )
 
 
@@ -38,6 +41,8 @@ class GraphBuilder:
         clarification_validation_agent,
         product_intelligence_agent,
         product_suggestion_agent,
+        user_confirmation_agent,
+        add_to_cart_agent,
         checkpointer: Optional[BaseCheckpointSaver] = None,
     ):
         """
@@ -61,6 +66,9 @@ class GraphBuilder:
                 product_intelligence_agent
             ),
             "product_suggestion": ProductSuggestionAgentNode(product_suggestion_agent),
+            "user_confirmation": UserConfirmationNode(user_confirmation_agent),
+            "add_to_cart_gateway": AddToCartGatewayNode(),
+            "add_to_cart": AddToCartNode(add_to_cart_agent),
         }
 
         logger.info(
@@ -94,7 +102,27 @@ class GraphBuilder:
 
         self.state_graph.add_edge("product_intelligence", "product_suggestion")
 
-        self.state_graph.add_edge("product_suggestion", END)
+        self.state_graph.add_edge("product_suggestion", "user_confirmation")
+
+        self.state_graph.add_conditional_edges(
+            "user_confirmation",
+            self._should_ask_user_clarification,
+            {
+                True: "ask_interrupt_questions",
+                False: "add_to_cart_gateway",
+            },
+        )
+
+        self.state_graph.add_edge("ask_interrupt_questions", "user_confirmation")
+
+        self.state_graph.add_conditional_edges(
+            "add_to_cart_gateway",
+            self._should_execute_add_to_cart,
+            {
+                True: "add_to_cart",
+                False: END,
+            },
+        )
 
         logger.debug("Graph edges configured")
 
@@ -115,6 +143,38 @@ class GraphBuilder:
         )
         logger.debug(f"Should ask more questions: {needs_more_questions}")
         return needs_more_questions
+
+    def _should_ask_user_clarification(self, state: GraphState) -> bool:
+        """
+        Determine if we need to ask for user clarification.
+
+        This is a routing function used in conditional edges.
+
+        Args:
+            state: Current state of the workflow.
+
+        Returns:
+            True if user clarification is needed, False otherwise.
+        """
+        needs_user_clarification = not state.get("user_confirmation_completed", False)
+        logger.debug(f"Should ask user clarification: {needs_user_clarification}")
+        return needs_user_clarification
+
+    def _should_execute_add_to_cart(self, state: GraphState) -> bool:
+        """
+        Determine if we need to execute add to cart.
+
+        This is a routing function used in conditional edges.
+
+        Args:
+            state: Current state of the workflow.
+
+        Returns:
+            True if add to cart should be executed, False otherwise.
+        """
+        should_execute_add_to_cart = state.get("should_execute_add_to_cart", False)
+        logger.debug(f"Should execute add to cart: {should_execute_add_to_cart}")
+        return should_execute_add_to_cart
 
     def build(self) -> StateGraph:
         """

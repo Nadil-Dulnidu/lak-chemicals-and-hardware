@@ -22,6 +22,13 @@ from app.core.agents.prompts.clarification_validation_agent_prompt import (
 from app.core.agents.prompts.product_retrevel_suggestion_agent_prompt import (
     PRODUCT_RETRIEVAL_SUGGESTION_AGENT_PROMPT,
 )
+from app.core.agents.prompts.add_to_cart_agent_prompt import (
+    ADD_TO_CART_AGENT_PROMPT,
+)
+
+from app.core.agents.prompts.user_confirmation_agnet_prompt import (
+    USER_CONFIRMATION_AGENT_PROMPT,
+)
 
 __all__ = [
     "SALES_ANALYTICS_AGENT_PROMPT",
@@ -32,4 +39,6 @@ __all__ = [
     "PRODUCT_INTELIGENCE_AGENT_PROMPT",
     "CLARIFICATION_VALIDATION_AGENT_PROMPT",
     "PRODUCT_RETRIEVAL_SUGGESTION_AGENT_PROMPT",
+    "ADD_TO_CART_AGENT_PROMPT",
+    "USER_CONFIRMATION_AGENT_PROMPT",
 ]

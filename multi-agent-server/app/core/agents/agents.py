@@ -35,6 +35,8 @@ from app.core.agents.prompts import (
     PRODUCT_INTELIGENCE_AGENT_PROMPT,
     CLARIFICATION_VALIDATION_AGENT_PROMPT,
     PRODUCT_RETRIEVAL_SUGGESTION_AGENT_PROMPT,
+    ADD_TO_CART_AGENT_PROMPT,
+    USER_CONFIRMATION_AGENT_PROMPT,
 )
 from app.core.agents.schemas import (
     SalesAnalyticsAgentResponse,
@@ -45,6 +47,8 @@ from app.core.agents.schemas import (
     ProductIntelligenceAgentResponse,
     ClarificationValidationAgentResponse,
     ProductSuggestionAgentResponse,
+    AddToCartAgentResponse,
+    UserConfirmationAgentResponse,
 )
 from app.exceptions.agents_exceptions import (
     AgentConfigurationError,
@@ -56,6 +60,7 @@ from app.core.agents.tools import (
     get_product_performance_report,
     web_search_tool,
     fetch_product_list,
+    add_to_cart_tool,
 )
 
 logger = get_logger(__name__)
@@ -182,6 +187,8 @@ class AgentManager:
                 self._product_intelligence_agent = None
                 self._clarification_validation_agent = None
                 self._product_suggestion_agent = None
+                self._add_to_cart_agent = None
+                self._user_confirmation_agent = None
 
                 # Cached model instances
                 self._genai_model = None
@@ -492,6 +499,72 @@ class AgentManager:
 
         return self._product_suggestion_agent
 
+    def get_add_to_cart_agent(self):
+        """
+        Get (or lazily create) the add to cart agent singleton.
+
+        Uses the normal GenAI model and the add to cart tool.
+        Returns an AddToCartAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._add_to_cart_agent is None:
+            with self._lock:
+                if self._add_to_cart_agent is None:
+                    try:
+                        logger.info("Creating add to cart agent.")
+                        self._add_to_cart_agent = Agent(
+                            model=self._get_genai_model(),
+                            name="add_to_cart_agent",
+                            tools=[add_to_cart_tool],
+                            prompt=ADD_TO_CART_AGENT_PROMPT,
+                            response_format=AddToCartAgentResponse,
+                        ).create_agent()
+                        logger.info("Add to cart agent created successfully.")
+                    except Exception as exc:
+                        logger.error("Failed to create add to cart agent: %s", exc)
+                        raise
+
+        return self._add_to_cart_agent
+
+    def get_user_confirmation_agent(self):
+        """
+        Get (or lazily create) the user confirmation agent singleton.
+
+        Uses the normal GenAI model and the add to cart tool.
+        Returns an AddToCartAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._user_confirmation_agent is None:
+            with self._lock:
+                if self._user_confirmation_agent is None:
+                    try:
+                        logger.info("Creating user confirmation agent.")
+                        self._user_confirmation_agent = Agent(
+                            model=self._get_genai_model(),
+                            name="user_confirmation_agent",
+                            tools=[],
+                            prompt=USER_CONFIRMATION_AGENT_PROMPT,
+                            response_format=UserConfirmationAgentResponse,
+                        ).create_agent()
+                        logger.info("User confirmation agent created successfully.")
+                    except Exception as exc:
+                        logger.error(
+                            "Failed to create user confirmation agent: %s", exc
+                        )
+                        raise
+
+        return self._user_confirmation_agent
+
     def reset(self) -> None:
         """
         Discard all cached agents and models so they are recreated on next access.
@@ -690,6 +763,52 @@ def get_product_suggestion_agent():
         AgentInitializationError: If the agent cannot be created.
     """
     return _manager.get_product_suggestion_agent()
+
+
+def get_add_to_cart_agent():
+    """
+    Return the add to cart agent singleton.
+
+    The agent accepts a user message and returns an AddToCartAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_add_to_cart_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Add to cart for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_add_to_cart_agent()
+
+
+def get_user_confirmation_agent():
+    """
+    Return the user confirmation agent singleton.
+
+    The agent accepts a user message and returns a UserConfirmationAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_user_confirmation_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Show me user confirmation for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_user_confirmation_agent()
 
 
 def reset_agents() -> None:
