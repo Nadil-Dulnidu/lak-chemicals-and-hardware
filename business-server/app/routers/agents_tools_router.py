@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import  List
+from typing import List
 
 from app.utils.db import get_async_session
 from app.services.report_service import ReportService
@@ -15,7 +15,7 @@ from app.schemas.report_schema import (
     ProductPerformanceData,
 )
 from app.schemas.product_schema import ProductListResponse
-from app.schemas.cart_schema import CartItemCreate, CartResponse
+from app.schemas.cart_schema import CartItemsAgentCreate, CartResponse
 
 router = APIRouter(prefix="/tools", tags=["Agent Tools"])
 
@@ -155,9 +155,8 @@ async def get_all_products(
     summary="Add item to cart",
     description="Add a product to the user's shopping cart",
 )
-async def add_item_to_cart(
-    item_data: List[CartItemCreate],
-    user_id: str = Query(..., description="User ID"),
+async def add_items_to_cart(
+    item_data: CartItemsAgentCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -170,15 +169,14 @@ async def add_item_to_cart(
     """
     try:
         cart = None
-        for item in item_data:
-            cart = await cart_service.add_item_to_cart(session, user_id, item)
+        for item in item_data.items:
+            cart = await cart_service.add_item_to_cart(session, item_data.user_id, item)
 
         if not cart:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to add item to cart",
             )
-
         return cart
 
     except ValueError as e:

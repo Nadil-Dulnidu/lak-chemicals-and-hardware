@@ -25,6 +25,10 @@ class CartItemCreate(CartItemBase):
 
     pass
 
+class CartItemsAgentCreate(BaseModel):
+    """Schema for adding item to cart for agent"""
+    items: List[CartItemBase] = Field(..., description="List of items to add to cart")
+    user_id: str = Field(..., description="User ID")
 
 class CartItemUpdate(BaseModel):
     """Schema for updating cart item quantity"""
