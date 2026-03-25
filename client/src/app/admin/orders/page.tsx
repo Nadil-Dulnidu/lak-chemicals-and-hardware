@@ -12,13 +12,22 @@ import { Spinner } from "@/components/ui/spinner";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Clock, CheckCircle, XCircle, Eye, Filter, ShoppingCart, FileText, Package, Trash2 } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Eye, Filter, ShoppingCart, FileText, Package, Trash2, Truck, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusConfig = {
   PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30", label: "Pending" },
   COMPLETED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30", label: "Completed" },
+  DELIVERED: { icon: Truck, color: "bg-blue-500/10 text-blue-400 border-blue-500/30", label: "Delivered" },
   CANCELLED: { icon: XCircle, color: "bg-red-500/10 text-red-400 border-red-500/30", label: "Cancelled" },
 };
 
@@ -56,13 +65,24 @@ export default function AdminOrdersPage() {
     fetchOrders();
   }, [fetchOrders]);
 
-  const updateOrderStatus = async (orderId: number, status: "PENDING" | "COMPLETED" | "CANCELLED") => {
+  const updateOrderStatus = async (orderId: number, status: "PENDING" | "COMPLETED" | "CANCELLED" | "DELIVERED") => {
     setUpdatingId(orderId);
     try {
       await orderActions.updateStatus(orderId, status, authToken);
-      toast.success(`Order ${status === "COMPLETED" ? "completed" : status === "CANCELLED" ? "cancelled" : "updated"}`);
+      const statusMessages: Record<string, string> = {
+        COMPLETED: "Order marked as completed",
+        DELIVERED: "Order marked as delivered",
+        CANCELLED: "Order cancelled",
+        PENDING: "Order set back to pending",
+      };
+      toast.success(statusMessages[status] || "Order updated");
       fetchOrders();
-      setSelectedOrder(null);
+      // Refresh selectedOrder if the detail dialog is open for this order
+      if (selectedOrder?.order_id === orderId) {
+        const updatedOrders = await orderActions.getAll(0, 500, authToken);
+        const updated = updatedOrders.orders.find((o) => o.order_id === orderId);
+        if (updated) setSelectedOrder(updated);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update order");
     } finally {
@@ -117,6 +137,7 @@ export default function AdminOrdersPage() {
                   <SelectItem value="all">All Orders</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="DELIVERED">Delivered</SelectItem>
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
@@ -125,8 +146,8 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {(["PENDING", "COMPLETED", "CANCELLED"] as const).map((status) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {(["PENDING", "COMPLETED", "DELIVERED", "CANCELLED"] as const).map((status) => {
             const count = orders.filter((o) => o.status === status).length;
             const Icon = statusConfig[status].icon;
             return (
@@ -202,28 +223,69 @@ export default function AdminOrdersPage() {
                             <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(order)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {order.status === "PENDING" && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-green-400 border-green-500/30 hover:bg-green-500/10"
-                                  onClick={() => updateOrderStatus(order.order_id, "COMPLETED")}
-                                  disabled={updatingId === order.order_id}
-                                >
-                                  Complete
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-400 border-red-500/30 hover:bg-red-500/10"
-                                  onClick={() => updateOrderStatus(order.order_id, "CANCELLED")}
-                                  disabled={updatingId === order.order_id}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
+
+                            {/* Status Dropdown — shown for PENDING & COMPLETED orders */}
+                            {(order.status === "PENDING" || order.status === "COMPLETED") && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1 border-border/50"
+                                    disabled={updatingId === order.order_id}
+                                  >
+                                    {updatingId === order.order_id ? (
+                                      <Spinner className="h-3 w-3" />
+                                    ) : (
+                                      <>
+                                        Update
+                                        <ChevronDown className="h-3 w-3" />
+                                      </>
+                                    )}
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  {order.status === "PENDING" && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => updateOrderStatus(order.order_id, "COMPLETED")}
+                                        className="gap-2 text-green-400 focus:text-green-400"
+                                      >
+                                        <CheckCircle className="h-4 w-4" />
+                                        Mark as Completed
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => updateOrderStatus(order.order_id, "DELIVERED")}
+                                        className="gap-2 text-blue-400 focus:text-blue-400"
+                                      >
+                                        <Truck className="h-4 w-4" />
+                                        Mark as Delivered
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => updateOrderStatus(order.order_id, "CANCELLED")}
+                                        className="gap-2 text-red-400 focus:text-red-400"
+                                      >
+                                        <XCircle className="h-4 w-4" />
+                                        Cancel Order
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {order.status === "COMPLETED" && (
+                                    <DropdownMenuItem
+                                      onClick={() => updateOrderStatus(order.order_id, "DELIVERED")}
+                                      className="gap-2 text-blue-400 focus:text-blue-400"
+                                    >
+                                      <Truck className="h-4 w-4" />
+                                      Mark as Delivered
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             )}
+
                             {order.status === "CANCELLED" && (
                               <Button
                                 variant="outline"
@@ -388,17 +450,60 @@ export default function AdminOrdersPage() {
                   <span className="text-orange-400">LKR {selectedOrder.total_amount.toLocaleString()}</span>
                 </div>
 
-                {/* Action Buttons */}
-                {selectedOrder.status === "PENDING" && (
+                {/* Action Buttons — Dropdown for status changes */}
+                {(selectedOrder.status === "PENDING" || selectedOrder.status === "COMPLETED") && (
                   <div className="flex gap-3 pt-4">
-                    <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateOrderStatus(selectedOrder.order_id, "COMPLETED")} disabled={updatingId === selectedOrder.order_id}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Complete Order
-                    </Button>
-                    <Button variant="destructive" className="flex-1" onClick={() => updateOrderStatus(selectedOrder.order_id, "CANCELLED")} disabled={updatingId === selectedOrder.order_id}>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className="flex-1 bg-orange-500 hover:bg-orange-600" disabled={updatingId === selectedOrder.order_id}>
+                          {updatingId === selectedOrder.order_id ? (
+                            <Spinner className="h-4 w-4 mr-2" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 mr-2" />
+                          )}
+                          Update Status
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="w-56">
+                        <DropdownMenuLabel>Change Order Status</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {selectedOrder.status === "PENDING" && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => updateOrderStatus(selectedOrder.order_id, "COMPLETED")}
+                              className="gap-2 text-green-400 focus:text-green-400"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Mark as Completed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => updateOrderStatus(selectedOrder.order_id, "DELIVERED")}
+                              className="gap-2 text-blue-400 focus:text-blue-400"
+                            >
+                              <Truck className="h-4 w-4" />
+                              Mark as Delivered
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => updateOrderStatus(selectedOrder.order_id, "CANCELLED")}
+                              className="gap-2 text-red-400 focus:text-red-400"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Cancel Order
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {selectedOrder.status === "COMPLETED" && (
+                          <DropdownMenuItem
+                            onClick={() => updateOrderStatus(selectedOrder.order_id, "DELIVERED")}
+                            className="gap-2 text-blue-400 focus:text-blue-400"
+                          >
+                            <Truck className="h-4 w-4" />
+                            Mark as Delivered
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
                 {selectedOrder.status === "CANCELLED" && (

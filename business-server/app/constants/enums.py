@@ -35,6 +35,7 @@ class OrderStatus(enum.Enum):
 
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
+    DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
 
 
