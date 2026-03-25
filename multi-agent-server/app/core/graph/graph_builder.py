@@ -14,6 +14,8 @@ from app.core.graph.nodes import (
     UserConfirmationNode,
     AddToCartGatewayNode,
     AddToCartNode,
+    AnalyticsQueryValidationNode,
+    AnalyticsRouterNode,
 )
 
 
@@ -43,6 +45,8 @@ class GraphBuilder:
         product_suggestion_agent,
         user_confirmation_agent,
         add_to_cart_agent,
+        analytics_query_validation_agent,
+        analytics_router_agent,
         checkpointer: Optional[BaseCheckpointSaver] = None,
     ):
         """
@@ -69,6 +73,10 @@ class GraphBuilder:
             "user_confirmation": UserConfirmationNode(user_confirmation_agent),
             "add_to_cart_gateway": AddToCartGatewayNode(),
             "add_to_cart": AddToCartNode(add_to_cart_agent),
+            "analytics_query_validation": AnalyticsQueryValidationNode(
+                analytics_query_validation_agent
+            ),
+            "analytics_router": AnalyticsRouterNode(analytics_router_agent),
         }
 
         logger.info(
@@ -87,7 +95,14 @@ class GraphBuilder:
         Define edges and transitions between nodes.
 
         """
-        self.state_graph.add_edge(START, "clarification_validation")
+        self.state_graph.add_conditional_edges(
+            START,
+            self._cheack_is_admin,
+            {
+                True: "analytics_query_validation",
+                False: "clarification_validation",
+            },
+        )
 
         self.state_graph.add_conditional_edges(
             "clarification_validation",
@@ -123,6 +138,23 @@ class GraphBuilder:
                 False: END,
             },
         )
+
+        self.state_graph.add_edge("add_to_cart", END)
+
+        self.state_graph.add_conditional_edges(
+            "analytics_query_validation",
+            self._should_ask_analytics_inquiry_validation,
+            {
+                True: "ask_interrupt_questions",
+                False: "analytics_router",
+            },
+        )
+
+        self.state_graph.add_edge("ask_interrupt_questions", "analytics_query_validation")
+
+        self.state_graph.add_edge("analytics_router", END)
+
+
 
         logger.debug("Graph edges configured")
 
@@ -175,6 +207,40 @@ class GraphBuilder:
         should_execute_add_to_cart = state.get("should_execute_add_to_cart", False)
         logger.debug(f"Should execute add to cart: {should_execute_add_to_cart}")
         return should_execute_add_to_cart
+
+    def _should_ask_analytics_inquiry_validation(self, state: GraphState) -> bool:
+        """
+        Determine if we need to ask for analytics inquiry validation.
+
+        This is a routing function used in conditional edges.
+
+        Args:
+            state: Current state of the workflow.
+
+        Returns:
+            True if analytics inquiry validation is needed, False otherwise.
+        """
+        needs_analytics_inquiry_validation = not state.get(
+            "analytics_inquiry_validation_completed", False
+        )
+        logger.debug(f"Should ask analytics inquiry validation: {needs_analytics_inquiry_validation}")
+        return needs_analytics_inquiry_validation
+
+    def _cheack_is_admin(self, state: GraphState) -> bool:
+        """
+        Determine if the user is an admin.
+
+        This is a routing function used in conditional edges.
+
+        Args:
+            state: Current state of the workflow.
+
+        Returns:
+            True if the user is an admin, False otherwise.
+        """
+        is_admin = state.get("is_admin", False)
+        logger.debug(f"Is admin: {is_admin}")
+        return is_admin    
 
     def build(self) -> StateGraph:
         """

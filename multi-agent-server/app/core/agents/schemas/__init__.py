@@ -32,6 +32,10 @@ from app.core.agents.schemas.user_confirmation_agnet_model import (
     UserConfirmationAgentResponse,
 )
 
+from app.core.agents.schemas.analytics_quiry_validation_agent_model import (
+    AnalyticsQueryValidationAgentResponse,
+)
+
 __all__ = [
     "SalesAnalyticsAgentResponse",
     "AnalyticsRouterAgentResponse",
@@ -43,4 +47,5 @@ __all__ = [
     "ProductSuggestionAgentResponse",
     "AddToCartAgentResponse",
     "UserConfirmationAgentResponse",
+    "AnalyticsQueryValidationAgentResponse",
 ]
