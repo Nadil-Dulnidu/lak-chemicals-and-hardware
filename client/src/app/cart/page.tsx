@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { CustomerLayout } from "@/components/layouts/customer-layout";
-import { cartActions, quotationActions } from "@/lib/actions";
+import { cartActions, productActions, quotationActions } from "@/lib/actions";
 import { Cart } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ export default function CartPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [isRequestingQuote, setIsRequestingQuote] = useState(false);
+  const [stockByProductId, setStockByProductId] = useState<Record<string, number>>({});
 
   const [authToken, setAuthToken] = useState<string | null>(null);
   const { getToken } = useAuth();
@@ -48,8 +49,51 @@ export default function CartPage() {
     fetchCart();
   }, [fetchCart]);
 
-  const updateQuantity = async (cartItemId: number, newQuantity: number) => {
+  useEffect(() => {
+    if (!cart) return;
+
+    let cancelled = false;
+    const loadStock = async () => {
+      const uniqueIds = Array.from(new Set(cart.items.map((item) => item.product_id)));
+      try {
+        const results = await Promise.all(
+          uniqueIds.map(async (id) => {
+            try {
+              const product = await productActions.getById(id);
+              return [id, product.stock_qty] as const;
+            } catch {
+              return [id, undefined] as const;
+            }
+          }),
+        );
+
+        if (cancelled) return;
+        setStockByProductId((prev) => {
+          const next = { ...prev };
+          for (const [id, stock] of results) {
+            if (typeof stock === "number") next[id] = stock;
+          }
+          return next;
+        });
+      } catch {
+        // Keep existing stock map on bulk failure
+      }
+    };
+
+    loadStock();
+    return () => {
+      cancelled = true;
+    };
+  }, [cart]);
+
+  const updateQuantity = async (cartItemId: number, productId: string, currentQuantity: number, newQuantity: number) => {
     if (newQuantity < 1) return;
+
+    const stockQty = stockByProductId[productId];
+    if (typeof stockQty === "number" && newQuantity > currentQuantity && newQuantity > stockQty) {
+      toast.error(`Only ${stockQty} in stock for this item`);
+      return;
+    }
 
     setUpdatingItems((prev) => new Set(prev).add(cartItemId));
     try {
@@ -183,7 +227,7 @@ export default function CartPage() {
                           variant="outline"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => updateQuantity(item.cart_item_id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.cart_item_id, item.product_id, item.quantity, item.quantity - 1)}
                           disabled={updatingItems.has(item.cart_item_id) || item.quantity <= 1}
                         >
                           <Minus className="h-4 w-4" />
@@ -191,12 +235,22 @@ export default function CartPage() {
                         <Input
                           type="number"
                           value={item.quantity}
-                          onChange={(e) => updateQuantity(item.cart_item_id, parseInt(e.target.value) || 1)}
+                          onChange={(e) => updateQuantity(item.cart_item_id, item.product_id, item.quantity, parseInt(e.target.value) || 1)}
                           className="w-16 h-8 text-center"
                           min={1}
+                          max={typeof stockByProductId[item.product_id] === "number" && stockByProductId[item.product_id] > 0 ? stockByProductId[item.product_id] : undefined}
                           disabled={updatingItems.has(item.cart_item_id)}
                         />
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.cart_item_id, item.quantity + 1)} disabled={updatingItems.has(item.cart_item_id)}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => updateQuantity(item.cart_item_id, item.product_id, item.quantity, item.quantity + 1)}
+                          disabled={
+                            updatingItems.has(item.cart_item_id) ||
+                            (typeof stockByProductId[item.product_id] === "number" && item.quantity >= stockByProductId[item.product_id])
+                          }
+                        >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
