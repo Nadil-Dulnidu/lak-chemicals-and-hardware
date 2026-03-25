@@ -18,7 +18,7 @@ import { ShoppingCart, ArrowLeft, Package, CreditCard, Banknote, Building2, Chec
 import { cn } from "@/lib/utils";
 import { useAuth } from "@clerk/nextjs";
 
-type PaymentMethod = "cash" | "card" | "bank";
+type PaymentMethod = "cash" | "card";
 
 function CheckoutContent() {
   const router = useRouter();
@@ -277,23 +277,6 @@ function CheckoutContent() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Lock className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bank Transfer */}
-                <div
-                  className={cn("p-4 rounded-lg border-2 cursor-pointer transition-all", selectedPayment === "bank" ? "border-orange-500 bg-orange-500/10" : "border-border/50 hover:border-border")}
-                  onClick={() => setSelectedPayment("bank")}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", selectedPayment === "bank" ? "border-orange-500" : "border-muted-foreground")}>
-                      {selectedPayment === "bank" && <div className="w-3 h-3 rounded-full bg-orange-500" />}
-                    </div>
-                    <Building2 className="h-5 w-5 text-purple-400" />
-                    <div className="flex-1">
-                      <p className="font-medium">Bank Transfer</p>
-                      <p className="text-sm text-muted-foreground">Transfer to our bank account</p>
                     </div>
                   </div>
                 </div>
