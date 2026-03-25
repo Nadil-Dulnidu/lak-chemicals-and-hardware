@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { AdminLayout } from "@/components/layouts/admin-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { productActions, orderActions, salesActions, quotationActions } from "@/lib/actions";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import Link from "next/link";
 import { Package, ShoppingBag, DollarSign, AlertTriangle, TrendingUp, FileText, ArrowRight, Clock, CheckCircle } from "lucide-react";
 
@@ -20,9 +22,24 @@ interface DashboardStats {
   totalSales: number;
 }
 
+interface RevenueDataPoint {
+  label: string;
+  revenue: number;
+  orderId: number;
+  date: string;
+}
+
+const revenueChartConfig = {
+  revenue: {
+    label: "Revenue (LKR)",
+    color: "hsl(25, 95%, 53%)",
+  },
+} satisfies ChartConfig;
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [revenueData, setRevenueData] = useState<RevenueDataPoint[]>([]);
   const [recentOrders, setRecentOrders] = useState<
     Array<{
       order_id: number;
@@ -48,12 +65,13 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       if (!authToken) return;
       try {
-        const [products, orders, quotations, lowStock, salesSummary] = await Promise.all([
+        const [products, orders, quotations, lowStock, salesSummary, allOrders] = await Promise.all([
           productActions.getAll(),
           orderActions.getAll(0, 5, authToken),
           quotationActions.getAll(0, 100, authToken),
           productActions.getLowStockAlerts(10, 100, authToken),
           salesActions.getSummary({}, authToken),
+          orderActions.getAll(0, 100, authToken),
         ]);
 
         const pendingOrders = orders.orders.filter((o) => o.status === "PENDING").length;
@@ -69,6 +87,27 @@ export default function AdminDashboard() {
         });
 
         setRecentOrders(orders.orders.slice(0, 5));
+
+        // Process orders for chart data — sort by date, map to chart points
+        const sortedOrders = [...allOrders.orders]
+          .filter((o) => o.status === "COMPLETED") // Only include completed orders for revenue chart
+          .sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
+
+        const chartData: RevenueDataPoint[] = sortedOrders.map((order) => ({
+          label: new Date(order.order_date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          revenue: order.total_amount,
+          orderId: order.order_id,
+          date: new Date(order.order_date).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+        }));
+
+        setRevenueData(chartData);
       } catch (error) {
         console.error("Failed to fetch stats:", error);
       } finally {
@@ -167,6 +206,85 @@ export default function AdminDashboard() {
           })}
         </div>
 
+        {/* Revenue by Order Chart */}
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-400" />
+                  Revenue by Order
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Total revenue from each order, sorted by date
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/30">
+                {revenueData.length} Orders
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {revenueData.length > 0 ? (
+              <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
+                <AreaChart
+                  data={revenueData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    fontSize={12}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    fontSize={12}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value, name, item) => (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-muted-foreground text-xs">
+                              Order #{item.payload.orderId} • {item.payload.date}
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              LKR {Number(value).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      />
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="hsl(25, 95%, 53%)"
+                    strokeWidth={2}
+                    fill="url(#revenueGradient)"
+                  />
+                </AreaChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                <p>No order data available to display</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Orders */}
           <Card className="bg-card/50 border-border/50">
@@ -255,3 +373,4 @@ export default function AdminDashboard() {
     </AdminLayout>
   );
 }
+
