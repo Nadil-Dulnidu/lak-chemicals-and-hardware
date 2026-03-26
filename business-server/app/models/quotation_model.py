@@ -5,7 +5,6 @@ from datetime import datetime
 from app.constants import QuotationStatus
 from app.utils.db import Base
 
-
 class Quotation(Base):
     """
     Model for quotation requests.
@@ -16,6 +15,7 @@ class Quotation(Base):
 
     quotation_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(50), nullable=False, index=True)
+    user_email = Column(String(100), nullable=False, index=True)
     status = Column(
         Enum(QuotationStatus),
         nullable=False,

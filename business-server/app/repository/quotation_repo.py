@@ -62,6 +62,7 @@ class QuotationRepository:
             # Create quotation
             quotation = Quotation(
                 user_id=quotation_data["user_id"],
+                user_email=quotation_data.get("user_email", ""),
                 status=QuotationStatus.PENDING,
                 total_amount=Decimal("0.00"),
                 notes=quotation_data.get("notes"),

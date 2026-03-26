@@ -69,9 +69,10 @@ async def create_quotation(
     """
     try:
         user_id = user_data.get("sub")
+        user_email = user_data.get("primary_email_address")
 
         quotation = await quotation_service.create_quotation(
-            session, user_id, quotation_data
+            session, user_id, quotation_data, user_email
         )
 
         if not quotation:
@@ -110,9 +111,20 @@ async def create_quotation_from_cart(
     """
     try:
         user_id = user_data.get("sub")
+        # Clerk JWT may expose email via 'email', 'email_address', or 'email_addresses'
+        user_email = (
+            user_data.get("email")
+            or user_data.get("email_address")
+            or (
+                user_data.get("email_addresses", [{}])[0].get("email_address")
+                if user_data.get("email_addresses")
+                else ""
+            )
+            or ""
+        )
 
         quotation = await quotation_service.create_quotation_from_cart(
-            session, user_id, quotation_data
+            session, user_id, quotation_data, user_email
         )
 
         if not quotation:
