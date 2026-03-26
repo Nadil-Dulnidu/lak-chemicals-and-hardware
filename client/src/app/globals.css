@@ -47,11 +47,58 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Dark theme - Hardware/Industrial inspired colors */
+/* Light theme - default */
 :root {
   --radius: 0.75rem;
 
-  /* Dark industrial theme - default */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.12 0.005 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.12 0.005 250);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0.005 250);
+
+  /* Orange primary - Hardware accent */
+  --primary: oklch(0.65 0.2 40);
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.95 0.005 250);
+  --secondary-foreground: oklch(0.15 0.005 250);
+
+  --muted: oklch(0.95 0.005 250);
+  --muted-foreground: oklch(0.45 0.01 250);
+
+  --accent: oklch(0.95 0.01 250);
+  --accent-foreground: oklch(0.15 0.005 250);
+
+  --destructive: oklch(0.55 0.25 25);
+
+  --border: oklch(0.9 0.005 250);
+  --input: oklch(0.9 0.005 250);
+  --ring: oklch(0.65 0.2 40);
+
+  /* Chart colors */
+  --chart-1: oklch(0.65 0.2 40);  /* Orange */
+  --chart-2: oklch(0.55 0.15 160); /* Teal */
+  --chart-3: oklch(0.6 0.17 280);  /* Purple */
+  --chart-4: oklch(0.6 0.18 140);  /* Green */
+  --chart-5: oklch(0.55 0.2 30);   /* Red-Orange */
+
+  /* Sidebar */
+  --sidebar: oklch(0.96 0.003 250);
+  --sidebar-foreground: oklch(0.15 0.005 250);
+  --sidebar-primary: oklch(0.65 0.2 40);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.92 0.005 250);
+  --sidebar-accent-foreground: oklch(0.15 0.005 250);
+  --sidebar-border: oklch(0.88 0.005 250);
+  --sidebar-ring: oklch(0.65 0.2 40);
+}
+
+/* Dark theme - Hardware/Industrial inspired colors */
+.dark {
   --background: oklch(0.12 0.005 250);
   --foreground: oklch(0.98 0 0);
 
@@ -81,11 +128,11 @@
   --ring: oklch(0.7 0.18 45);
 
   /* Vibrant chart colors */
-  --chart-1: oklch(0.7 0.18 45); /* Orange */
+  --chart-1: oklch(0.7 0.18 45);  /* Orange */
   --chart-2: oklch(0.65 0.15 160); /* Teal */
-  --chart-3: oklch(0.7 0.17 280); /* Purple */
+  --chart-3: oklch(0.7 0.17 280);  /* Purple */
   --chart-4: oklch(0.75 0.18 140); /* Green */
-  --chart-5: oklch(0.65 0.2 30); /* Red-Orange */
+  --chart-5: oklch(0.65 0.2 30);   /* Red-Orange */
 
   /* Sidebar - Slightly darker */
   --sidebar: oklch(0.1 0.005 250);
@@ -96,36 +143,6 @@
   --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(0.25 0.01 250);
   --sidebar-ring: oklch(0.7 0.18 45);
-}
-
-/* Light theme - rarely used but defined */
-.light {
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.12 0.005 250);
-
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0.005 250);
-
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0.005 250);
-
-  --primary: oklch(0.65 0.2 40);
-  --primary-foreground: oklch(1 0 0);
-
-  --secondary: oklch(0.95 0.005 250);
-  --secondary-foreground: oklch(0.15 0.005 250);
-
-  --muted: oklch(0.95 0.005 250);
-  --muted-foreground: oklch(0.45 0.01 250);
-
-  --accent: oklch(0.95 0.01 250);
-  --accent-foreground: oklch(0.15 0.005 250);
-
-  --destructive: oklch(0.55 0.25 25);
-
-  --border: oklch(0.9 0.005 250);
-  --input: oklch(0.9 0.005 250);
-  --ring: oklch(0.65 0.2 40);
 }
 
 @layer base {

@@ -8,6 +8,7 @@ import { Home, Package, ShoppingCart, FileText, ClipboardList, BarChart3, Truck,
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { UserButton, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const customerNavItems = [
   { href: "/", label: "Home", icon: Home },
@@ -73,6 +74,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <SignedIn>
             <UserButton
               afterSignOutUrl="/"
