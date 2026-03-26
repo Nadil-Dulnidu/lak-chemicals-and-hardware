@@ -237,7 +237,7 @@ export default function AdminQuotationsPage() {
                                   onClick={() => handleReject(quotation.quotation_id)}
                                   disabled={updatingId === quotation.quotation_id}
                                 >
-                                  Reject
+                                  {updatingId === quotation.quotation_id ? <Spinner className="h-4 w-4" /> : "Reject"}
                                 </Button>
                               </>
                             )}
@@ -331,8 +331,17 @@ export default function AdminQuotationsPage() {
                       Approve
                     </Button>
                     <Button variant="destructive" className="flex-1" onClick={() => handleReject(selectedQuotation.quotation_id)} disabled={updatingId === selectedQuotation.quotation_id}>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Reject
+                      {updatingId === selectedQuotation.quotation_id ? (
+                        <>
+                          <Spinner className="h-4 w-4 mr-2" />
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Reject
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}
@@ -376,11 +385,12 @@ export default function AdminQuotationsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
+              <Button variant="outline" onClick={() => setShowApproveDialog(false)} disabled={updatingId !== null}>
                 Cancel
               </Button>
-              <Button onClick={confirmApprove} className="bg-green-600 hover:bg-green-700">
-                Confirm Approval
+              <Button onClick={confirmApprove} className="bg-green-600 hover:bg-green-700" disabled={updatingId !== null}>
+                {updatingId !== null ? <Spinner className="h-4 w-4 mr-2" /> : null}
+                {updatingId !== null ? "Sending Email..." : "Confirm Approval"}
               </Button>
             </DialogFooter>
           </DialogContent>
