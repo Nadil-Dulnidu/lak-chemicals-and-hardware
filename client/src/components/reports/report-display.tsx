@@ -741,7 +741,7 @@ export function DownloadableReport({ children, fileName = "report", data, report
 
       doc.setFontSize(14);
       doc.setTextColor(80);
-      let textTitle = fileName.replace(/-/g, " ");
+      const textTitle = fileName.replace(/-/g, " ");
       doc.text(textTitle, 14, 32);
 
       doc.setFontSize(10);
@@ -751,7 +751,7 @@ export function DownloadableReport({ children, fileName = "report", data, report
       let currentY = 50;
 
       if (reportType === "SALES") {
-        const sales = data as SalesReportData;
+        const sales = data as unknown as SalesReportData;
 
         doc.setFontSize(12);
         doc.setTextColor(0);
@@ -785,11 +785,55 @@ export function DownloadableReport({ children, fileName = "report", data, report
             body: sales.items.map((item) => [item.period, item.total_sales?.toString(), item.total_quantity?.toString(), `LKR ${item.total_revenue?.toLocaleString()}`]),
             margin: { left: 14, right: 14 },
             theme: "striped",
+            headStyles: { fillColor: [41, 128, 185] },
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
+
+        if (sales.product_breakdown && sales.product_breakdown.length > 0) {
+          doc.setFontSize(12);
+          doc.text("Top Products", 14, currentY);
+          currentY += 6;
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Rank", "Product", "Orders", "Qty Sold", "Revenue (LKR)"]],
+            body: sales.product_breakdown.slice(0, 10).map((p, i) => [
+              `#${i + 1}`,
+              p.product_name,
+              p.sales_count?.toString() || "0",
+              p.quantity_sold?.toString() || "0",
+              p.revenue?.toLocaleString() || "0",
+            ]),
+            margin: { left: 14, right: 14 },
+            theme: "striped",
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [41, 128, 185] },
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
+
+        if (sales.category_breakdown && sales.category_breakdown.length > 0) {
+          doc.setFontSize(12);
+          doc.text("Sales by Category", 14, currentY);
+          currentY += 6;
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Category", "Orders", "Qty Sold", "Revenue (LKR)"]],
+            body: sales.category_breakdown.map((cat) => [
+              cat.category?.replace("_", " ") || "-",
+              cat.sales_count?.toString() || "0",
+              cat.quantity_sold?.toString() || "0",
+              cat.revenue?.toLocaleString() || "0",
+            ]),
+            margin: { left: 14, right: 14 },
+            theme: "striped",
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [41, 128, 185] },
           });
           currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
         }
       } else if (reportType === "INVENTORY") {
-        const inv = data as InventoryReportData;
+        const inv = data as unknown as InventoryReportData;
 
         doc.setFontSize(12);
         doc.text("Summary", 14, currentY);
@@ -805,9 +849,32 @@ export function DownloadableReport({ children, fileName = "report", data, report
           theme: "grid",
           headStyles: { fillColor: [39, 174, 96] },
         });
-        currentY = (doc as any).lastAutoTable.finalY + 15;
+        currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+
+        if (inv.low_stock_items && inv.low_stock_items.length > 0) {
+          doc.setFontSize(12);
+          doc.text(`Low Stock Items (${inv.low_stock_items.length})`, 14, currentY);
+          currentY += 6;
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Product", "Category", "Status", "Current Stock", "Reorder Level"]],
+            body: inv.low_stock_items.map((item) => [
+              item.product_name,
+              item.category?.replace("_", " ") || "N/A",
+              item.status.replace("_", " "),
+              item.current_stock?.toString(),
+              item.reorder_level?.toString(),
+            ]),
+            margin: { left: 14, right: 14 },
+            styles: { fontSize: 9 },
+            theme: "striped",
+            headStyles: { fillColor: [243, 156, 18] },
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
 
         if (inv.items && inv.items.length > 0) {
+          doc.setFontSize(12);
           doc.text("All Products", 14, currentY);
           currentY += 6;
 
@@ -824,6 +891,7 @@ export function DownloadableReport({ children, fileName = "report", data, report
             margin: { left: 14, right: 14 },
             styles: { fontSize: 9 },
             theme: "striped",
+            headStyles: { fillColor: [39, 174, 96] },
           });
         }
       } else if (reportType === "PRODUCT_PERFORMANCE") {
@@ -844,22 +912,45 @@ export function DownloadableReport({ children, fileName = "report", data, report
           currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
         }
 
-        if (perf.top_products) {
-          doc.text("Top Products", 14, currentY);
+        if (perf.top_products && perf.top_products.length > 0) {
+          doc.setFontSize(12);
+          doc.text("Top Performing Products", 14, currentY);
           currentY += 6;
           autoTable(doc, {
             startY: currentY,
-            head: [["Rank", "Product", "Category", "Orders", "Qty Sold", "Revenue (LKR)"]],
+            head: [["Rank", "Product", "Category", "Orders", "Avg Qty/Order", "Qty Sold", "Revenue (LKR)"]],
             body: perf.top_products.map((p, i) => [
               `#${i + 1}`,
               p.product_name,
               p.category?.replace("_", " ") || "-",
               p.number_of_orders?.toString() || "0",
+              Number(p.average_order_quantity)?.toFixed(1) || "0",
               p.total_quantity_sold?.toString() || "0",
               Number(p.total_revenue)?.toLocaleString() || "0",
             ]),
             theme: "striped",
             styles: { fontSize: 9 },
+            headStyles: { fillColor: [142, 68, 173] },
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
+
+        if (perf.category_performance && perf.category_performance.length > 0) {
+          doc.setFontSize(12);
+          doc.text("Category Performance", 14, currentY);
+          currentY += 6;
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Category", "Qty Sold", "Unique Products", "Revenue (LKR)"]],
+            body: perf.category_performance.map((cat) => [
+              cat.category?.replace("_", " ") || "-",
+              cat.total_quantity?.toString() || "0",
+              cat.unique_products?.toString() || "0",
+              cat.total_revenue?.toLocaleString() || "0",
+            ]),
+            theme: "striped",
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [142, 68, 173] },
           });
           currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
         }
