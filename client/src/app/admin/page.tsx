@@ -90,7 +90,7 @@ export default function AdminDashboard() {
 
         // Process orders for chart data — sort by date, map to chart points
         const sortedOrders = [...allOrders.orders]
-          .filter((o) => o.status === "COMPLETED") // Only include completed orders for revenue chart
+          .filter((o) => o.status === "DELIVERED" || o.status === "SHIPPED") // Only include shipped/delivered orders for revenue chart
           .sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
 
         const chartData: RevenueDataPoint[] = sortedOrders.map((order) => ({
@@ -215,9 +215,7 @@ export default function AdminDashboard() {
                   <DollarSign className="h-5 w-5 text-green-400" />
                   Revenue by Order
                 </CardTitle>
-                <CardDescription className="mt-1">
-                  Total revenue from each order, sorted by date
-                </CardDescription>
+                <CardDescription className="mt-1">Total revenue from each order, sorted by date</CardDescription>
               </div>
               <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/30">
                 {revenueData.length} Orders
@@ -227,10 +225,7 @@ export default function AdminDashboard() {
           <CardContent>
             {revenueData.length > 0 ? (
               <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
-                <AreaChart
-                  data={revenueData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
+                <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0.3} />
@@ -238,20 +233,8 @@ export default function AdminDashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    fontSize={12}
-                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                  />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                  <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
@@ -260,21 +243,13 @@ export default function AdminDashboard() {
                             <span className="text-muted-foreground text-xs">
                               Order #{item.payload.orderId} • {item.payload.date}
                             </span>
-                            <span className="font-semibold text-foreground">
-                              LKR {Number(value).toLocaleString()}
-                            </span>
+                            <span className="font-semibold text-foreground">LKR {Number(value).toLocaleString()}</span>
                           </div>
                         )}
                       />
                     }
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="hsl(25, 95%, 53%)"
-                    strokeWidth={2}
-                    fill="url(#revenueGradient)"
-                  />
+                  <Area type="monotone" dataKey="revenue" stroke="hsl(25, 95%, 53%)" strokeWidth={2} fill="url(#revenueGradient)" />
                 </AreaChart>
               </ChartContainer>
             ) : (
@@ -317,13 +292,16 @@ export default function AdminDashboard() {
                           className={
                             order.status === "PENDING"
                               ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
-                              : order.status === "COMPLETED"
-                                ? "bg-green-500/10 text-green-400 border-green-500/30"
-                                : "bg-red-500/10 text-red-400 border-red-500/30"
+                              : order.status === "SHIPPED"
+                                ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                                : order.status === "DELIVERED"
+                                  ? "bg-green-500/10 text-green-400 border-green-500/30"
+                                  : "bg-red-500/10 text-red-400 border-red-500/30"
                           }
                         >
                           {order.status === "PENDING" && <Clock className="h-3 w-3 mr-1" />}
-                          {order.status === "COMPLETED" && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {order.status === "SHIPPED" && <Package className="h-3 w-3 mr-1" />}
+                          {order.status === "DELIVERED" && <CheckCircle className="h-3 w-3 mr-1" />}
                           {order.status}
                         </Badge>
                       </div>
@@ -373,4 +351,3 @@ export default function AdminDashboard() {
     </AdminLayout>
   );
 }
-

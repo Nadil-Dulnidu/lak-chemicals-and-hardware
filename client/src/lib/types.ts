@@ -12,7 +12,7 @@ export type ProductCategory =
   | "safety_equipment"
   | "other";
 
-export type OrderStatus = "PENDING" | "COMPLETED" | "CANCELLED" | "DELIVERED";
+export type OrderStatus = "PENDING" | "SHIPPED" | "CANCELLED" | "DELIVERED";
 export type PaymentStatus = "PAID" | "UNPAID";
 export type QuotationStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type ReportType = "SALES" | "INVENTORY" | "PRODUCT_PERFORMANCE" | "LOW_STOCK";

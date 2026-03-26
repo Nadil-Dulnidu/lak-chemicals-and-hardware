@@ -256,7 +256,7 @@ export const orderActions = {
       token,
     }),
 
-  updateStatus: (id: number, status: "PENDING" | "COMPLETED" | "CANCELLED" | "DELIVERED", token?: string | null) =>
+  updateStatus: (id: number, status: "PENDING" | "SHIPPED" | "CANCELLED" | "DELIVERED", token?: string | null) =>
     apiClient<Order>(`/orders/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),

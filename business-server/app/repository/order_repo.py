@@ -365,7 +365,8 @@ class OrderRepository:
     ) -> Optional[Order]:
         """
         Update order status.
-        On COMPLETED: deducts stock and records sales from the source entity.
+        On SHIPPED: marks the order as shipped.
+        On DELIVERED: deducts stock and records sales from the source entity.
         """
         try:
             result = await session.execute(
@@ -385,13 +386,16 @@ class OrderRepository:
                 return None
 
             old_status = order.status
-            if old_status in [OrderStatus.COMPLETED, OrderStatus.CANCELLED]:
+            if old_status in [OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
                 raise ValueError(f"Cannot change status of {old_status.value} order")
 
             order.status = status
 
-            if status == OrderStatus.COMPLETED:
-                order.completed_date = datetime.utcnow()
+            if status == OrderStatus.SHIPPED:
+                pass  # Awaiting delivery — no stock changes yet
+
+            elif status == OrderStatus.DELIVERED:
+                order.completed_date = order.completed_date or datetime.utcnow()
                 await self._process_order_completion(session, order, user_id)
 
             elif status == OrderStatus.CANCELLED:
@@ -614,7 +618,7 @@ class OrderRepository:
             if not order:
                 return False
 
-            if order.status == OrderStatus.COMPLETED:
+            if order.status in [OrderStatus.DELIVERED]:
                 raise ValueError("Cannot delete completed orders")
 
             stmt = delete(Order).where(Order.order_id == order_id)
