@@ -1,9 +1,14 @@
 "use client";
 
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas-pro";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { DollarSign, ShoppingBag, TrendingUp, Package, AlertTriangle, BarChart3, Calendar } from "lucide-react";
+import { DollarSign, ShoppingBag, TrendingUp, Package, AlertTriangle, BarChart3, Calendar, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SalesReportData, InventoryReportData, ReportType } from "@/lib/types";
 
@@ -677,4 +682,259 @@ export function ReportDisplay({ reportType, data }: ReportDisplayProps) {
         </Card>
       );
   }
+}
+
+// ============= Downloadable Wrapper Component =============
+export function DownloadableReport({ children, fileName = "report", data, reportType }: { children: React.ReactNode; fileName?: string; data?: Record<string, unknown>; reportType?: string }) {
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadPDF = async () => {
+    if (!data || !reportType) {
+      // Fallback to html2canvas if no data mapping
+      const element = reportRef.current;
+      if (!element) return;
+      setIsDownloading(true);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        let heightLeft = pdfHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft >= 0) {
+          position = heightLeft - pdfHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+          heightLeft -= pageHeight;
+        }
+        pdf.save(`${fileName}.pdf`);
+      } catch (error) {
+        console.error("PDF generation failed", error);
+      } finally {
+        setIsDownloading(false);
+      }
+      return;
+    }
+
+    // NATIVE PDF GENERATION using jspdf-autotable
+    setIsDownloading(true);
+    try {
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.width;
+
+      // Header
+      doc.setFontSize(22);
+      doc.setTextColor(30);
+      doc.text("Lak Chemicals & Hardware", 14, 22);
+
+      doc.setFontSize(14);
+      doc.setTextColor(80);
+      let textTitle = fileName.replace(/-/g, " ");
+      doc.text(textTitle, 14, 32);
+
+      doc.setFontSize(10);
+      doc.setTextColor(120);
+      doc.text(`Generated at: ${new Date().toLocaleString()}`, 14, 40);
+
+      let currentY = 50;
+
+      if (reportType === "SALES") {
+        const sales = data as SalesReportData;
+
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.text("Summary", 14, currentY);
+        currentY += 6;
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [["Total Revenue", "Total Sales", "Items Sold", "Avg Sale Value"]],
+          body: [
+            [
+              `LKR ${sales.summary.total_revenue?.toLocaleString() || 0}`,
+              sales.summary.total_sales?.toString() || "0",
+              sales.summary.total_quantity?.toString() || "0",
+              `LKR ${sales.summary.average_sale_value?.toLocaleString() || 0}`,
+            ],
+          ],
+          margin: { left: 14, right: 14 },
+          theme: "grid",
+          headStyles: { fillColor: [41, 128, 185] },
+        });
+        currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+
+        if (sales.items && sales.items.length > 0) {
+          doc.setFontSize(12);
+          doc.text("Sales by Period", 14, currentY);
+          currentY += 6;
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Period", "Sales", "Quantity", "Revenue"]],
+            body: sales.items.map((item) => [item.period, item.total_sales?.toString(), item.total_quantity?.toString(), `LKR ${item.total_revenue?.toLocaleString()}`]),
+            margin: { left: 14, right: 14 },
+            theme: "striped",
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
+      } else if (reportType === "INVENTORY") {
+        const inv = data as InventoryReportData;
+
+        doc.setFontSize(12);
+        doc.text("Summary", 14, currentY);
+        currentY += 6;
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [["Total Products", "Stock Value", "Low Stock", "Out of Stock"]],
+          body: [
+            [inv.summary.total_products?.toString(), `LKR ${inv.summary.total_stock_value?.toLocaleString()}`, inv.summary.low_stock_count?.toString(), inv.summary.out_of_stock_count?.toString()],
+          ],
+          margin: { left: 14 },
+          theme: "grid",
+          headStyles: { fillColor: [39, 174, 96] },
+        });
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+
+        if (inv.items && inv.items.length > 0) {
+          doc.text("All Products", 14, currentY);
+          currentY += 6;
+
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Product", "Category", "Status", "Stock", "Value (LKR)"]],
+            body: inv.items.map((item) => [
+              item.product_name,
+              item.category?.replace("_", " ") || "N/A",
+              item.status.replace("_", " "),
+              item.current_stock?.toString(),
+              item.stock_value?.toLocaleString() || "0",
+            ]),
+            margin: { left: 14, right: 14 },
+            styles: { fontSize: 9 },
+            theme: "striped",
+          });
+        }
+      } else if (reportType === "PRODUCT_PERFORMANCE") {
+        const perf = data as unknown as ProductPerformanceData;
+
+        if (perf.summary) {
+          doc.setFontSize(12);
+          doc.text("Summary", 14, currentY);
+          currentY += 6;
+
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Products Analyzed", "Total Revenue", "Total Qty Sold"]],
+            body: [[perf.summary.top_product_count?.toString() || "0", `LKR ${perf.summary.total_revenue?.toLocaleString() || 0}`, perf.summary.total_quantity_sold?.toString() || "0"]],
+            theme: "grid",
+            headStyles: { fillColor: [142, 68, 173] },
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
+
+        if (perf.top_products) {
+          doc.text("Top Products", 14, currentY);
+          currentY += 6;
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Rank", "Product", "Category", "Orders", "Qty Sold", "Revenue (LKR)"]],
+            body: perf.top_products.map((p, i) => [
+              `#${i + 1}`,
+              p.product_name,
+              p.category?.replace("_", " ") || "-",
+              p.number_of_orders?.toString() || "0",
+              p.total_quantity_sold?.toString() || "0",
+              Number(p.total_revenue)?.toLocaleString() || "0",
+            ]),
+            theme: "striped",
+            styles: { fontSize: 9 },
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
+      } else if (reportType === "LOW_STOCK") {
+        const low = data as unknown as LowStockData;
+
+        doc.setFontSize(12);
+        doc.text("Summary", 14, currentY);
+        currentY += 6;
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [["Low Stock Items", "Critical", "Out of Stock", "Recommended Restock Qty"]],
+          body: [
+            [
+              low.summary.total_low_stock_products?.toString() || "0",
+              low.summary.critical_count?.toString() || "0",
+              low.summary.out_of_stock_count?.toString() || "0",
+              low.summary.total_recommended_order_quantity?.toString() || "0",
+            ],
+          ],
+          theme: "grid",
+          headStyles: { fillColor: [211, 84, 0] },
+        });
+        currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+
+        if (low.items) {
+          doc.text("Items Requiring Attention", 14, currentY);
+          currentY += 6;
+          autoTable(doc, {
+            startY: currentY,
+            head: [["Product", "Category", "Current", "Reorder Level", "Stock %", "Recommend"]],
+            body: low.items.map((item) => [
+              item.product_name,
+              item.category?.replace("_", " ") || "-",
+              item.current_stock?.toString() || "0",
+              item.reorder_level?.toString() || "0",
+              `${Number(item.stock_percentage).toFixed(1)}%`,
+              `+${item.recommended_order_quantity}`,
+            ]),
+            theme: "striped",
+            styles: { fontSize: 9 },
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        }
+      }
+
+      // Add footer
+      const pageCount = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth - 20, doc.internal.pageSize.height - 10, { align: "right" });
+      }
+
+      doc.save(`${fileName}.pdf`);
+    } catch (error) {
+      console.error("Native PDF generation failed", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={downloadPDF} disabled={isDownloading} variant="outline" className="gap-2 border-orange-500/30 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors">
+          <Download className="h-4 w-4" />
+          {isDownloading ? "Generating PDF..." : "Download as PDF"}
+        </Button>
+      </div>
+      <div className="p-6 bg-background rounded-xl border border-border" ref={reportRef}>
+        {children}
+      </div>
+    </div>
+  );
 }

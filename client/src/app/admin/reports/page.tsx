@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from "sonner";
 import { BarChart3, Package, TrendingUp, AlertTriangle, DollarSign, ShoppingBag, Calendar, Save, Play, Trash2, Edit, Plus, FileText, Clock, BookmarkPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReportDisplay, SalesReportDisplay, InventoryReportDisplay, ProductPerformanceDisplay, LowStockReportDisplay } from "@/components/reports/report-display";
+import { ReportDisplay, SalesReportDisplay, InventoryReportDisplay, ProductPerformanceDisplay, LowStockReportDisplay, DownloadableReport } from "@/components/reports/report-display";
 
 // Type for dynamic report data
 type ReportData = SalesReportData | InventoryReportData | Record<string, unknown>;
@@ -531,7 +531,9 @@ export default function AdminReportsPage() {
                     Clear Results
                   </Button>
                 </div>
-                <ReportDisplay reportType={runReportType} data={runReportData as Record<string, unknown>} />
+                <DownloadableReport fileName={`Report-${runReportType}`} data={runReportData} reportType={runReportType}>
+                  <ReportDisplay reportType={runReportType} data={runReportData as Record<string, unknown>} />
+                </DownloadableReport>
               </div>
             )}
           </TabsContent>
@@ -586,7 +588,11 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {salesReport && <SalesReportDisplay data={salesReport} />}
+            {salesReport && (
+              <DownloadableReport fileName="Sales-Report" data={salesReport} reportType="SALES">
+                <SalesReportDisplay data={salesReport} />
+              </DownloadableReport>
+            )}
           </TabsContent>
 
           {/* Inventory Report Tab */}
@@ -611,7 +617,11 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {inventoryReport && <InventoryReportDisplay data={inventoryReport} />}
+            {inventoryReport && (
+              <DownloadableReport fileName="Inventory-Report" data={inventoryReport} reportType="INVENTORY">
+                <InventoryReportDisplay data={inventoryReport} />
+              </DownloadableReport>
+            )}
           </TabsContent>
 
           {/* Performance Report Tab */}
@@ -642,7 +652,11 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {perfReport && <ProductPerformanceDisplay data={perfReport as any} />}
+            {perfReport && (
+              <DownloadableReport fileName="Product-Performance-Report" data={perfReport} reportType="PRODUCT_PERFORMANCE">
+                <ProductPerformanceDisplay data={perfReport as any} />
+              </DownloadableReport>
+            )}
           </TabsContent>
 
           {/* Low Stock Report Tab */}
@@ -665,7 +679,11 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {lowStockReport && <LowStockReportDisplay data={lowStockReport as any} />}
+            {lowStockReport && (
+              <DownloadableReport fileName="Low-Stock-Report" data={lowStockReport} reportType="LOW_STOCK">
+                <LowStockReportDisplay data={lowStockReport as any} />
+              </DownloadableReport>
+            )}
           </TabsContent>
         </Tabs>
 
