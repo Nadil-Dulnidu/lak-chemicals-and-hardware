@@ -20,6 +20,7 @@ from app.schemas.order_schema import OrderResponse, OrderProductResponse
 from app.repository.order_repo import OrderRepository
 from app.constants import OrderStatus
 from app.config.logging import get_logger, create_owasp_log_context
+from app.utils.email_service import send_quotation_status_email
 
 
 class QuotationService:
@@ -40,6 +41,7 @@ class QuotationService:
         session: AsyncSession,
         user_id: str,
         quotation_data: QuotationCreate,
+        user_email: str = "",
     ) -> Optional[QuotationResponse]:
         """
         Create a new quotation.
@@ -65,6 +67,7 @@ class QuotationService:
             # Prepare quotation data
             quotation_dict = {
                 "user_id": user_id,
+                "user_email": user_email,
                 "items": [item.model_dump() for item in quotation_data.items],
                 "notes": quotation_data.notes,
             }
@@ -113,6 +116,7 @@ class QuotationService:
         session: AsyncSession,
         user_id: str,
         quotation_data: QuotationFromCart,
+        user_email: str = "",
     ) -> Optional[QuotationResponse]:
         """
         Create quotation from user's cart.
@@ -154,6 +158,7 @@ class QuotationService:
             # Prepare quotation data
             quotation_dict = {
                 "user_id": user_id,
+                "user_email": user_email,
                 "items": items,
                 "notes": quotation_data.notes,
             }
@@ -393,6 +398,27 @@ class QuotationService:
                         location="QuotationService.update_quotation_status",
                     ),
                 )
+
+                # Send email notification to customer when status is APPROVED or REJECTED
+                if quotation.user_email and status.value in ("APPROVED", "REJECTED"):
+                    try:
+                        await send_quotation_status_email(
+                            recipient_email=quotation.user_email,
+                            quotation_id=quotation.quotation_id,
+                            new_status=status.value,
+                            total_amount=quotation.total_amount,
+                            discount_amount=quotation.discount_amount,
+                        )
+                    except Exception as email_exc:
+                        # Email failure must NOT roll back the status update
+                        self._logger.error(
+                            f"Failed to send status email for quotation {quotation_id}: {email_exc}",
+                            extra=create_owasp_log_context(
+                                user=user_id,
+                                action="send_quotation_email_error",
+                                location="QuotationService.update_quotation_status",
+                            ),
+                        )
 
                 return await self._to_response(quotation)
 

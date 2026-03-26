@@ -43,6 +43,7 @@ export default function AdminProductsPage() {
   const [supplyPrice, setSupplyPrice] = useState<number | undefined>(undefined);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<ProductCreate>({
     name: "",
     price: 0,
@@ -144,6 +145,7 @@ export default function AdminProductsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       let productId: string;
@@ -173,6 +175,8 @@ export default function AdminProductsPage() {
       fetchProducts();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save product");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -330,11 +334,20 @@ export default function AdminProductsPage() {
                   <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Product description" rows={3} />
                 </div>
                 <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600">
-                    {editingProduct ? "Update" : "Create"}
+                  <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 border-0" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <Spinner className="h-4 w-4" />
+                        {imageFile && !editingProduct ? "Uploading & Saving..." : "Saving..."}
+                      </span>
+                    ) : editingProduct ? (
+                      "Update"
+                    ) : (
+                      "Create"
+                    )}
                   </Button>
                 </div>
               </form>

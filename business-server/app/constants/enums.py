@@ -34,7 +34,7 @@ class OrderStatus(enum.Enum):
     """Order status enumeration for order management"""
 
     PENDING = "PENDING"
-    COMPLETED = "COMPLETED"
+    SHIPPED = "SHIPPED"
     DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
 

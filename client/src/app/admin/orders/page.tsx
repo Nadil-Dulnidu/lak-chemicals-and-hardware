@@ -12,22 +12,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Clock, CheckCircle, XCircle, Eye, Filter, ShoppingCart, FileText, Package, Trash2, Truck, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusConfig = {
   PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30", label: "Pending" },
-  COMPLETED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30", label: "Completed" },
-  DELIVERED: { icon: Truck, color: "bg-blue-500/10 text-blue-400 border-blue-500/30", label: "Delivered" },
+  SHIPPED: { icon: Truck, color: "bg-blue-500/10 text-blue-400 border-blue-500/30", label: "Shipped" },
+  DELIVERED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30", label: "Delivered" },
   CANCELLED: { icon: XCircle, color: "bg-red-500/10 text-red-400 border-red-500/30", label: "Cancelled" },
 };
 
@@ -65,12 +58,12 @@ export default function AdminOrdersPage() {
     fetchOrders();
   }, [fetchOrders]);
 
-  const updateOrderStatus = async (orderId: number, status: "PENDING" | "COMPLETED" | "CANCELLED" | "DELIVERED") => {
+  const updateOrderStatus = async (orderId: number, status: "PENDING" | "SHIPPED" | "CANCELLED" | "DELIVERED") => {
     setUpdatingId(orderId);
     try {
       await orderActions.updateStatus(orderId, status, authToken);
       const statusMessages: Record<string, string> = {
-        COMPLETED: "Order marked as completed",
+        SHIPPED: "Order marked as shipped",
         DELIVERED: "Order marked as delivered",
         CANCELLED: "Order cancelled",
         PENDING: "Order set back to pending",
@@ -136,7 +129,7 @@ export default function AdminOrdersPage() {
                 <SelectContent>
                   <SelectItem value="all">All Orders</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="SHIPPED">Shipped</SelectItem>
                   <SelectItem value="DELIVERED">Delivered</SelectItem>
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
@@ -147,7 +140,7 @@ export default function AdminOrdersPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {(["PENDING", "COMPLETED", "DELIVERED", "CANCELLED"] as const).map((status) => {
+          {(["PENDING", "SHIPPED", "DELIVERED", "CANCELLED"] as const).map((status) => {
             const count = orders.filter((o) => o.status === status).length;
             const Icon = statusConfig[status].icon;
             return (
@@ -224,16 +217,11 @@ export default function AdminOrdersPage() {
                               <Eye className="h-4 w-4" />
                             </Button>
 
-                            {/* Status Dropdown — shown for PENDING & COMPLETED orders */}
-                            {(order.status === "PENDING" || order.status === "COMPLETED") && (
+                            {/* Status Dropdown — shown for PENDING & SHIPPED orders */}
+                            {(order.status === "PENDING" || order.status === "SHIPPED") && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-1 border-border/50"
-                                    disabled={updatingId === order.order_id}
-                                  >
+                                  <Button variant="outline" size="sm" className="gap-1 border-border/50" disabled={updatingId === order.order_id}>
                                     {updatingId === order.order_id ? (
                                       <Spinner className="h-3 w-3" />
                                     ) : (
@@ -249,38 +237,29 @@ export default function AdminOrdersPage() {
                                   <DropdownMenuSeparator />
                                   {order.status === "PENDING" && (
                                     <>
-                                      <DropdownMenuItem
-                                        onClick={() => updateOrderStatus(order.order_id, "COMPLETED")}
-                                        className="gap-2 text-green-400 focus:text-green-400"
-                                      >
-                                        <CheckCircle className="h-4 w-4" />
-                                        Mark as Completed
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => updateOrderStatus(order.order_id, "DELIVERED")}
-                                        className="gap-2 text-blue-400 focus:text-blue-400"
-                                      >
+                                      <DropdownMenuItem onClick={() => updateOrderStatus(order.order_id, "SHIPPED")} className="gap-2 text-blue-400 focus:text-blue-400">
                                         <Truck className="h-4 w-4" />
-                                        Mark as Delivered
+                                        Mark as Shipped
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        onClick={() => updateOrderStatus(order.order_id, "CANCELLED")}
-                                        className="gap-2 text-red-400 focus:text-red-400"
-                                      >
+                                      <DropdownMenuItem onClick={() => updateOrderStatus(order.order_id, "CANCELLED")} className="gap-2 text-red-400 focus:text-red-400">
                                         <XCircle className="h-4 w-4" />
                                         Cancel Order
                                       </DropdownMenuItem>
                                     </>
                                   )}
-                                  {order.status === "COMPLETED" && (
-                                    <DropdownMenuItem
-                                      onClick={() => updateOrderStatus(order.order_id, "DELIVERED")}
-                                      className="gap-2 text-blue-400 focus:text-blue-400"
-                                    >
-                                      <Truck className="h-4 w-4" />
-                                      Mark as Delivered
-                                    </DropdownMenuItem>
+                                  {order.status === "SHIPPED" && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => updateOrderStatus(order.order_id, "DELIVERED")} className="gap-2 text-green-400 focus:text-green-400">
+                                        <CheckCircle className="h-4 w-4" />
+                                        Mark as Delivered
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => updateOrderStatus(order.order_id, "CANCELLED")} className="gap-2 text-red-400 focus:text-red-400">
+                                        <XCircle className="h-4 w-4" />
+                                        Cancel Order
+                                      </DropdownMenuItem>
+                                    </>
                                   )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -451,16 +430,12 @@ export default function AdminOrdersPage() {
                 </div>
 
                 {/* Action Buttons — Dropdown for status changes */}
-                {(selectedOrder.status === "PENDING" || selectedOrder.status === "COMPLETED") && (
+                {(selectedOrder.status === "PENDING" || selectedOrder.status === "SHIPPED") && (
                   <div className="flex gap-3 pt-4">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button className="flex-1 bg-orange-500 hover:bg-orange-600" disabled={updatingId === selectedOrder.order_id}>
-                          {updatingId === selectedOrder.order_id ? (
-                            <Spinner className="h-4 w-4 mr-2" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 mr-2" />
-                          )}
+                          {updatingId === selectedOrder.order_id ? <Spinner className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
                           Update Status
                         </Button>
                       </DropdownMenuTrigger>
@@ -469,38 +444,29 @@ export default function AdminOrdersPage() {
                         <DropdownMenuSeparator />
                         {selectedOrder.status === "PENDING" && (
                           <>
-                            <DropdownMenuItem
-                              onClick={() => updateOrderStatus(selectedOrder.order_id, "COMPLETED")}
-                              className="gap-2 text-green-400 focus:text-green-400"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                              Mark as Completed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateOrderStatus(selectedOrder.order_id, "DELIVERED")}
-                              className="gap-2 text-blue-400 focus:text-blue-400"
-                            >
+                            <DropdownMenuItem onClick={() => updateOrderStatus(selectedOrder.order_id, "SHIPPED")} className="gap-2 text-blue-400 focus:text-blue-400">
                               <Truck className="h-4 w-4" />
-                              Mark as Delivered
+                              Mark as Shipped
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => updateOrderStatus(selectedOrder.order_id, "CANCELLED")}
-                              className="gap-2 text-red-400 focus:text-red-400"
-                            >
+                            <DropdownMenuItem onClick={() => updateOrderStatus(selectedOrder.order_id, "CANCELLED")} className="gap-2 text-red-400 focus:text-red-400">
                               <XCircle className="h-4 w-4" />
                               Cancel Order
                             </DropdownMenuItem>
                           </>
                         )}
-                        {selectedOrder.status === "COMPLETED" && (
-                          <DropdownMenuItem
-                            onClick={() => updateOrderStatus(selectedOrder.order_id, "DELIVERED")}
-                            className="gap-2 text-blue-400 focus:text-blue-400"
-                          >
-                            <Truck className="h-4 w-4" />
-                            Mark as Delivered
-                          </DropdownMenuItem>
+                        {selectedOrder.status === "SHIPPED" && (
+                          <>
+                            <DropdownMenuItem onClick={() => updateOrderStatus(selectedOrder.order_id, "DELIVERED")} className="gap-2 text-green-400 focus:text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              Mark as Delivered
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => updateOrderStatus(selectedOrder.order_id, "CANCELLED")} className="gap-2 text-red-400 focus:text-red-400">
+                              <XCircle className="h-4 w-4" />
+                              Cancel Order
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -18,8 +18,8 @@ import { useAuth, useUser } from "@clerk/nextjs";
 
 const statusConfig = {
   PENDING: { icon: Clock, color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30", label: "Processing" },
-  COMPLETED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30", label: "Completed" },
-  DELIVERED: { icon: Truck, color: "bg-blue-500/10 text-blue-400 border-blue-500/30", label: "Delivered" },
+  SHIPPED: { icon: Truck, color: "bg-blue-500/10 text-blue-400 border-blue-500/30", label: "Shipped" },
+  DELIVERED: { icon: CheckCircle, color: "bg-green-500/10 text-green-400 border-green-500/30", label: "Delivered" },
   CANCELLED: { icon: XCircle, color: "bg-red-500/10 text-red-400 border-red-500/30", label: "Cancelled" },
 };
 
@@ -29,7 +29,7 @@ const statusConfig = {
 function parseUTCDate(dateString: string): number {
   if (!dateString) return 0;
   // If the string doesn't end with Z and doesn't have a + or - offset, append Z to force UTC parsing
-  const isNaive = !dateString.endsWith('Z') && !dateString.match(/[+\-]\d{2}:\d{2}$/);
+  const isNaive = !dateString.endsWith("Z") && !dateString.match(/[+\-]\d{2}:\d{2}$/);
   const safeString = isNaive ? `${dateString}Z` : dateString;
   return new Date(safeString).getTime();
 }
@@ -188,12 +188,7 @@ export default function OrdersPage() {
                     </p>
                     {/* Cancel button shown inline for eligible orders */}
                     {cancellable && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-400 border-red-500/30 hover:bg-red-500/10 gap-1.5"
-                        onClick={() => setCancelDialogOrder(order)}
-                      >
+                      <Button variant="outline" size="sm" className="text-red-400 border-red-500/30 hover:bg-red-500/10 gap-1.5" onClick={() => setCancelDialogOrder(order)}>
                         <XCircle className="h-3.5 w-3.5" />
                         Cancel ({minutesLeft}m left)
                       </Button>
@@ -223,16 +218,16 @@ export default function OrdersPage() {
                         </div>
                         <div className="h-px flex-1 bg-border" />
 
-                        {/* Completed */}
+                        {/* Shipped */}
                         <div className="flex items-center gap-1.5">
-                          <div className={cn("h-3 w-3 rounded-full", order.status === "COMPLETED" || order.status === "DELIVERED" ? "bg-green-500" : "bg-muted")} />
-                          <span className="text-xs sm:text-sm">Completed</span>
+                          <div className={cn("h-3 w-3 rounded-full", order.status === "SHIPPED" || order.status === "DELIVERED" ? "bg-blue-500" : "bg-muted")} />
+                          <span className="text-xs sm:text-sm">Shipped</span>
                         </div>
                         <div className="h-px flex-1 bg-border" />
 
                         {/* Delivered */}
                         <div className="flex items-center gap-1.5">
-                          <div className={cn("h-3 w-3 rounded-full", order.status === "DELIVERED" ? "bg-blue-500" : "bg-muted")} />
+                          <div className={cn("h-3 w-3 rounded-full", order.status === "DELIVERED" ? "bg-green-500" : "bg-muted")} />
                           <span className="text-xs sm:text-sm">Delivered</span>
                         </div>
                       </div>
@@ -245,11 +240,19 @@ export default function OrdersPage() {
                         </div>
                       )}
 
-                      {/* Delivered banner */}
-                      {order.status === "DELIVERED" && (
+                      {/* Shipped banner */}
+                      {order.status === "SHIPPED" && (
                         <div className="mt-3 p-2 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center gap-2">
                           <Truck className="h-4 w-4 text-blue-400 shrink-0" />
-                          <span className="text-sm text-blue-400">Your order has been delivered successfully!</span>
+                          <span className="text-sm text-blue-400">Your order is on its way!</span>
+                        </div>
+                      )}
+
+                      {/* Delivered banner */}
+                      {order.status === "DELIVERED" && (
+                        <div className="mt-3 p-2 rounded-md bg-green-500/10 border border-green-500/20 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />
+                          <span className="text-sm text-green-400">Your order has been delivered successfully!</span>
                         </div>
                       )}
                     </div>
@@ -326,11 +329,7 @@ export default function OrdersPage() {
                     {/* Cancel button at bottom for expanded view */}
                     {cancellable && (
                       <div className="mt-4">
-                        <Button
-                          variant="outline"
-                          className="w-full text-red-400 border-red-500/30 hover:bg-red-500/10 gap-2"
-                          onClick={() => setCancelDialogOrder(order)}
-                        >
+                        <Button variant="outline" className="w-full text-red-400 border-red-500/30 hover:bg-red-500/10 gap-2" onClick={() => setCancelDialogOrder(order)}>
                           <XCircle className="h-4 w-4" />
                           Cancel This Order ({minutesLeft}m remaining)
                         </Button>
@@ -354,9 +353,7 @@ export default function OrdersPage() {
               </div>
               <DialogTitle className="text-xl">Cancel Order #{cancelDialogOrder?.order_id}?</DialogTitle>
             </div>
-            <DialogDescription className="text-base">
-              Are you sure you want to cancel this order? This action cannot be undone.
-            </DialogDescription>
+            <DialogDescription className="text-base">Are you sure you want to cancel this order? This action cannot be undone.</DialogDescription>
           </DialogHeader>
 
           {cancelDialogOrder && (
@@ -384,7 +381,8 @@ export default function OrdersPage() {
                   <div>
                     <p className="text-sm font-medium text-blue-400 mb-1">Card Payment Refund</p>
                     <p className="text-sm text-muted-foreground">
-                      Since you paid by card, your refund of <strong className="text-foreground">LKR {cancelDialogOrder.total_amount.toLocaleString()}</strong> will be processed back to your original payment method. This may take <strong className="text-foreground">5–10 business days</strong> to reflect in your account.
+                      Since you paid by card, your refund of <strong className="text-foreground">LKR {cancelDialogOrder.total_amount.toLocaleString()}</strong> will be processed back to your original
+                      payment method. This may take <strong className="text-foreground">5–10 business days</strong> to reflect in your account.
                     </p>
                   </div>
                 </div>
@@ -394,7 +392,8 @@ export default function OrdersPage() {
                   <div>
                     <p className="text-sm font-medium text-green-400 mb-1">Cash Payment Refund</p>
                     <p className="text-sm text-muted-foreground">
-                      Since you paid by cash, your refund of <strong className="text-foreground">LKR {cancelDialogOrder.total_amount.toLocaleString()}</strong> will be arranged. Our team will contact you shortly to process the refund.
+                      Since you paid by cash, your refund of <strong className="text-foreground">LKR {cancelDialogOrder.total_amount.toLocaleString()}</strong> will be arranged. Our team will contact
+                      you shortly to process the refund.
                     </p>
                   </div>
                 </div>
@@ -403,9 +402,7 @@ export default function OrdersPage() {
                   <AlertTriangle className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-yellow-400 mb-1">No Payment Made</p>
-                    <p className="text-sm text-muted-foreground">
-                      No payment has been processed for this order yet. The order will simply be cancelled with no charges.
-                    </p>
+                    <p className="text-sm text-muted-foreground">No payment has been processed for this order yet. The order will simply be cancelled with no charges.</p>
                   </div>
                 </div>
               )}
@@ -424,17 +421,8 @@ export default function OrdersPage() {
             <Button variant="outline" onClick={() => setCancelDialogOrder(null)}>
               Keep Order
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleCancelOrder}
-              disabled={cancellingId !== null}
-              className="gap-2"
-            >
-              {cancellingId !== null ? (
-                <Spinner className="h-4 w-4" />
-              ) : (
-                <XCircle className="h-4 w-4" />
-              )}
+            <Button variant="destructive" onClick={handleCancelOrder} disabled={cancellingId !== null} className="gap-2">
+              {cancellingId !== null ? <Spinner className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               Yes, Cancel Order
             </Button>
           </DialogFooter>
@@ -451,9 +439,7 @@ export default function OrdersPage() {
               </div>
               <DialogTitle className="text-xl">Order Cancelled</DialogTitle>
             </div>
-            <DialogDescription className="text-base">
-              Order #{cancelSuccessOrder?.order_id} has been cancelled successfully.
-            </DialogDescription>
+            <DialogDescription className="text-base">Order #{cancelSuccessOrder?.order_id} has been cancelled successfully.</DialogDescription>
           </DialogHeader>
 
           {cancelSuccessOrder && (
@@ -465,7 +451,8 @@ export default function OrdersPage() {
                   <div>
                     <p className="text-sm font-medium text-blue-400 mb-1">Refund In Progress</p>
                     <p className="text-sm text-muted-foreground">
-                      Your refund of <strong className="text-foreground">LKR {cancelSuccessOrder.total_amount.toLocaleString()}</strong> is being processed. It will be credited back to your card within <strong className="text-foreground">5–10 business days</strong>.
+                      Your refund of <strong className="text-foreground">LKR {cancelSuccessOrder.total_amount.toLocaleString()}</strong> is being processed. It will be credited back to your card
+                      within <strong className="text-foreground">5–10 business days</strong>.
                     </p>
                   </div>
                 </div>
@@ -483,9 +470,7 @@ export default function OrdersPage() {
                 <div className="p-4 rounded-lg bg-muted/30 border border-border/50 flex gap-3">
                   <CheckCircle className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm text-muted-foreground">
-                      No payment was processed, so no refund is needed. The order has been cancelled.
-                    </p>
+                    <p className="text-sm text-muted-foreground">No payment was processed, so no refund is needed. The order has been cancelled.</p>
                   </div>
                 </div>
               )}

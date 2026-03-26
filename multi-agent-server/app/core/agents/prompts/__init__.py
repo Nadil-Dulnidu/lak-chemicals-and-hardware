@@ -30,6 +30,10 @@ from app.core.agents.prompts.user_confirmation_agnet_prompt import (
     USER_CONFIRMATION_AGENT_PROMPT,
 )
 
+from app.core.agents.prompts.analytics_quiry_validation_agent_prompt import (
+    ANALYTICS_QUERY_VALIDATION_AGENT_PROMPT,
+)
+
 __all__ = [
     "SALES_ANALYTICS_AGENT_PROMPT",
     "ANALYTICS_ROUTER_AGENT_PROMPT",
@@ -41,4 +45,5 @@ __all__ = [
     "PRODUCT_RETRIEVAL_SUGGESTION_AGENT_PROMPT",
     "ADD_TO_CART_AGENT_PROMPT",
     "USER_CONFIRMATION_AGENT_PROMPT",
+    "ANALYTICS_QUERY_VALIDATION_AGENT_PROMPT",
 ]

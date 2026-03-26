@@ -5,6 +5,8 @@ from .product_inteligence_node import ProductIntelligenceAgentNode
 from .add_to_cart_node import AddToCartNode
 from .user_confimation_node import UserConfirmationNode
 from .add_to_cart_gateway_node import AddToCartGatewayNode
+from .analytics_quiry_validation_node import AnalyticsQueryValidationNode
+from .analytics_router_node import AnalyticsRouterNode
 
 __all__ = [
     "ClarificationValidationNode",
@@ -14,4 +16,6 @@ __all__ = [
     "AddToCartNode",
     "UserConfirmationNode",
     "AddToCartGatewayNode",
+    "AnalyticsQueryValidationNode",
+    "AnalyticsRouterNode",
 ]

@@ -5,6 +5,8 @@ from app.core.agents.schemas import (
     ProductSuggestionAgentResponse,
     AddToCartAgentResponse,
     UserConfirmationAgentResponse,
+    AnalyticsQueryValidationAgentResponse,
+    AnalyticsRouterAgentResponse,
 )
 
 
@@ -25,3 +27,8 @@ class GraphState(MessagesState):
     user_confirmation_completed: bool = False
     should_execute_add_to_cart: bool | None = None
     add_to_cart_response: AddToCartAgentResponse | None = None
+    analytics_inquiry_validation_completed: bool = False
+    analytics_inquiry_validation_response: (
+        AnalyticsQueryValidationAgentResponse | None
+    ) = None
+    analytics_router_response: AnalyticsRouterAgentResponse | None = None

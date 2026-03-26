@@ -12,7 +12,8 @@ class OrderStatusEnum(str, Enum):
     """Order status enumeration for API validation"""
 
     PENDING = "PENDING"
-    COMPLETED = "COMPLETED"
+    SHIPPED = "SHIPPED"
+    DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
 
 

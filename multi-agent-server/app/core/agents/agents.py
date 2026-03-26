@@ -37,6 +37,7 @@ from app.core.agents.prompts import (
     PRODUCT_RETRIEVAL_SUGGESTION_AGENT_PROMPT,
     ADD_TO_CART_AGENT_PROMPT,
     USER_CONFIRMATION_AGENT_PROMPT,
+    ANALYTICS_QUERY_VALIDATION_AGENT_PROMPT,
 )
 from app.core.agents.schemas import (
     SalesAnalyticsAgentResponse,
@@ -49,6 +50,7 @@ from app.core.agents.schemas import (
     ProductSuggestionAgentResponse,
     AddToCartAgentResponse,
     UserConfirmationAgentResponse,
+    AnalyticsQueryValidationAgentResponse,
 )
 from app.exceptions.agents_exceptions import (
     AgentConfigurationError,
@@ -189,6 +191,7 @@ class AgentManager:
                 self._product_suggestion_agent = None
                 self._add_to_cart_agent = None
                 self._user_confirmation_agent = None
+                self._analytics_quiry_validation_agent = None
 
                 # Cached model instances
                 self._genai_model = None
@@ -565,6 +568,43 @@ class AgentManager:
 
         return self._user_confirmation_agent
 
+    def get_analytics_quiry_validation_agent(self):
+        """
+        Get (or lazily create) the analytics inquiry validation agent singleton.
+
+        Uses the normal GenAI model and no tools.
+        Returns an AnalyticsQueryValidationAgentResponse as structured output.
+
+        Returns:
+            Compiled LangGraph agent (CompiledGraph).
+
+        Raises:
+            AgentInitializationError: If agent creation fails.
+        """
+        if self._analytics_quiry_validation_agent is None:
+            with self._lock:
+                if self._analytics_quiry_validation_agent is None:
+                    try:
+                        logger.info("Creating analytics inquiry validation agent.")
+                        self._analytics_quiry_validation_agent = Agent(
+                            model=self._get_genai_reasoning_model(),
+                            name="analytics_quiry_validation_agent",
+                            tools=[],
+                            prompt=ANALYTICS_QUERY_VALIDATION_AGENT_PROMPT,
+                            response_format=AnalyticsQueryValidationAgentResponse,
+                        ).create_agent()
+                        logger.info(
+                            "Analytics inquiry validation agent created successfully."
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            "Failed to create analytics inquiry validation agent: %s",
+                            exc,
+                        )
+                        raise
+
+        return self._analytics_quiry_validation_agent
+
     def reset(self) -> None:
         """
         Discard all cached agents and models so they are recreated on next access.
@@ -809,6 +849,29 @@ def get_user_confirmation_agent():
         AgentInitializationError: If the agent cannot be created.
     """
     return _manager.get_user_confirmation_agent()
+
+
+def get_analytics_quiry_validation_agent():
+    """
+    Return the analytics inquiry validation agent singleton.
+
+    The agent accepts a user message and returns an AnalyticsQueryValidationAgentResponse.
+
+    Example::
+
+        from langchain_core.messages import HumanMessage
+        agent = get_analytics_quiry_validation_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="Show me analytics inquiry validation for March 2026")]}
+        )
+
+    Returns:
+        Compiled LangGraph agent (CompiledGraph).
+
+    Raises:
+        AgentInitializationError: If the agent cannot be created.
+    """
+    return _manager.get_analytics_quiry_validation_agent()
 
 
 def reset_agents() -> None:

@@ -33,7 +33,7 @@ export default function RootLayout({
         },
       }}
     >
-      <html lang="en" className="dark" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning>
         <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
           <Providers>{children}</Providers>
         </body>
