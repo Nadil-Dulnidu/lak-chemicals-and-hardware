@@ -1,10 +1,15 @@
 from app.configs.logging import get_logger
-from typing import Optional
+from typing import Optional, Any, Dict
 
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from app.core.observability.langfuse_tracing import (
+    langfuse,
+    sanitize_state,
+    _coerce_dict,
+)
 from app.core.graph.state import GraphState
 from app.core.graph.nodes import (
     ClarificationValidationNode,
@@ -107,7 +112,60 @@ class GraphBuilder:
     def _add_nodes(self) -> None:
         """Add all nodes to the state graph."""
         for node_name, node_instance in self.nodes.items():
-            self.state_graph.add_node(node_name, node_instance.execute)
+            def traced_execute(
+                state: GraphState,
+                _node_name: str = node_name,
+                _node_instance=node_instance,
+            ):
+                with langfuse.start_as_current_observation(
+                    name=_node_name,
+                    as_type="span",
+                    metadata={"node_type": "langgraph_node"},
+                ) as span:
+                    span.update(input={"state": sanitize_state(state)})
+
+                    metadata: Dict[str, Any] = {
+                        "is_admin": state.get("is_admin"),
+                        "clarification_done": state.get(
+                            "clarification_validation_completed"
+                        ),
+                        "user_confirmation_done": state.get(
+                            "user_confirmation_completed"
+                        ),
+                        "should_add_to_cart": state.get("should_execute_add_to_cart"),
+                    }
+
+                    if _node_name == "analytics_router":
+                        analytics_router_response = _coerce_dict(
+                            state.get("analytics_router_response")
+                        )
+                        route_decision = analytics_router_response.get("query_type")
+                        if route_decision is not None:
+                            metadata["route_decision"] = route_decision
+
+                    if _node_name in {"add_to_cart_gateway", "user_confirmation"}:
+                        if state.get("should_execute_add_to_cart") is not None:
+                            metadata["should_execute_add_to_cart"] = state.get(
+                                "should_execute_add_to_cart"
+                            )
+                        if state.get("user_confirmation_completed") is not None:
+                            metadata["user_confirmation_completed"] = state.get(
+                                "user_confirmation_completed"
+                            )
+
+                    metadata = {k: v for k, v in metadata.items() if v is not None}
+                    if metadata:
+                        span.update(metadata=metadata)
+
+                    try:
+                        result = _node_instance.execute(state)
+                        span.update(output={"state": sanitize_state(result)})
+                        return result
+                    except Exception as e:
+                        span.update(level="ERROR", status_message=str(e))
+                        raise
+
+            self.state_graph.add_node(node_name, traced_execute)
             logger.debug(f"Added node: {node_name}")
 
     def _add_edges(self) -> None:

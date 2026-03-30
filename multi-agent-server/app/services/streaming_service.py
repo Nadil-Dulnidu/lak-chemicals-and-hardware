@@ -4,6 +4,7 @@ from langgraph.types import Command
 
 from app.core.graph.state import GraphState
 from app.core.graph.graph_executer import get_compiled_graph
+from app.core.observability.langfuse_tracing import langfuse, sanitize_state
 from vercel_ai_sdk_langraph_python_adapter import stream_langgraph_to_vercel
 
 
@@ -35,6 +36,7 @@ async def stream_chat(
     if resume:
         # Resume execution with user input
         initial_state = Command(resume=message)
+        flow_type = "resume"
     else:
         # Initial invocation
         initial_state = {
@@ -43,13 +45,27 @@ async def stream_chat(
             "base_user_query": message,
             "user_id": user_id,
         }
+        flow_type = "admin" if is_admin else "customer"
 
     # Stream using the pluggable adapter!
     # No need to specify stream_mode or graph-specific logic
     # Configure custom data fields to stream alongside messages
-    async for event in stream_langgraph_to_vercel(
-        graph=graph,
-        initial_state=initial_state,
-        config=config,
-    ):
-        yield event
+    with langfuse.start_as_current_observation(
+        name="langgraph_execution",
+        as_type="span",
+        metadata={
+            "flow_type": flow_type,
+            "graph": "main_graph",
+        },
+    ) as trace:
+        trace.update(input={"state": sanitize_state(initial_state)})
+        try:
+            async for event in stream_langgraph_to_vercel(
+                graph=graph,
+                initial_state=initial_state,
+                config=config,
+            ):
+                yield event
+        except Exception as e:
+            trace.update(level="ERROR", status_message=str(e))
+            raise
