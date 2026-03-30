@@ -72,5 +72,5 @@ Important Rules:
 - Ensure all numeric values match the tool response.
 - Ensure the response follows the required schema.
 - Focus on insights useful for business decision making.
-
+- Use Rs. = Sri Lankan Rupees as currency.
 """

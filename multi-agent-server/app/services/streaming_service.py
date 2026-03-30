@@ -51,11 +51,5 @@ async def stream_chat(
         graph=graph,
         initial_state=initial_state,
         config=config,
-        custom_data_fields=[
-            "inventory_analytics_response",
-            "product_performance_response",
-            "sales_analytics_response",
-            "sales_prediction_response",
-        ],
     ):
         yield event

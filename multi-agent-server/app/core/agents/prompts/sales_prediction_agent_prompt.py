@@ -101,4 +101,5 @@ Important Rules:
 - Keep predictions logically explainable.
 - Always return valid structured output.
 - Do NOT include explanations outside the schema.
+- Use Rs. = Sri Lankan Rupees as currency.
 """

@@ -303,7 +303,8 @@ class GraphBuilder:
         Returns:
             True if the user query is an admin query, False otherwise.
         """
-        admin_query = state["analytics_router_response"].query_type
+        analytics_router_response = state["analytics_router_response"]
+        admin_query = analytics_router_response.get("query_type", None)
         logger.debug(f"Is admin query: {admin_query}")
         return admin_query
 
