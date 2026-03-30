@@ -113,4 +113,5 @@ Important Rules:
 - Keep insights practical and actionable.
 - Always return valid structured output.
 - Do NOT include explanations outside the schema.
+- Use Rs. = Sri Lankan Rupees as currency.
 """

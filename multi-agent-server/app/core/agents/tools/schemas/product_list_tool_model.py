@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import enum
 
@@ -44,14 +44,11 @@ class ProductResponse(ProductBase):
     created_at: datetime = Field(..., description="Creation timestamp")
     is_active: bool = Field(..., description="Active status")
 
-    class Config:
-        from_attributes = True
-
 
 class ProductListToolResponse(BaseModel):
     """Schema for paginated product list response"""
 
-    products: list[ProductResponse]
+    products: List[ProductResponse]
     total: int
     skip: int
     limit: int

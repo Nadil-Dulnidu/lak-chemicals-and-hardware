@@ -8,6 +8,10 @@ from app.exceptions.graph_exceptions import AgentInvocationError
 from langchain_core.messages import HumanMessage
 from app.core.agents.schemas import UserConfirmationAgentResponse
 
+from langchain_core.messages import AIMessage
+
+import json
+
 
 class UserConfirmationNode(BaseNode):
     def __init__(self, agent):
@@ -22,46 +26,46 @@ class UserConfirmationNode(BaseNode):
     def execute(self, state: GraphState) -> GraphState:
         try:
             self._log_start()
-            product_suggestion_response = state["product_suggestion_response"]
+            product_suggestion_response = state.get("product_suggestion_response", None)
 
             if not product_suggestion_response:
-                self._log_error(state, "Product suggestion response is required")
+                self._log_error("Product suggestion response is required")
                 raise ValueError("Product suggestion response is required")
 
-            product_suggestions = product_suggestion_response.suggestions
+            product_suggestions = product_suggestion_response.get("suggestions", None)
 
             if not product_suggestions:
-                self._log_error(state, "Product suggestions are required")
+                self._log_error("Product suggestions are required")
                 raise ValueError("Product suggestions are required")
-            user_id = state["user_id"]
 
             query = f"""
-                product suggestions: {product_suggestions}
+                messages: {state.get("messages", [])},
+                product_suggestions: {json.dumps(product_suggestions)}
             """
 
             result = self.agent.invoke({"messages": [HumanMessage(content=query)]})
 
             structured_response = result["structured_response"]
 
-            if not structured_response.is_user_answer_for_confirmation:
+            if structured_response.confirmed == None:
                 result = self._create_user_confirmation_process(
                     state, structured_response
                 )
-                self._log_end(state)
+                self._log_end()
                 return result
             else:
                 if self._need_user_clarification(structured_response):
                     result = self._create_user_clarification_process(
                         state, structured_response
                     )
-                    self._log_end(state)
+                    self._log_end()
                     return result
                 else:
                     result = self._create_completed_state(state, structured_response)
-                    self._log_end(state)
+                    self._log_end()
                     return result
 
-            self._log_end(state)
+            self._log_end()
         except Exception as exc:
             self._log_error(str(exc))
             raise AgentInvocationError("Failed to invoke add to cart agent") from exc
@@ -80,6 +84,7 @@ class UserConfirmationNode(BaseNode):
             A user confirmation process.
         """
         return {
+            "messages": AIMessage(content=""),
             "interrupt_question": structured_response.message_to_user,
         }
 
@@ -111,7 +116,8 @@ class UserConfirmationNode(BaseNode):
             A user clarification process.
         """
         return {
-            "interrupt_question": structured_response.clarification_question,
+            "messages": AIMessage(content=""),
+            "interrupt_question": structured_response.message_to_user,
         }
 
     def _create_completed_state(
@@ -128,6 +134,7 @@ class UserConfirmationNode(BaseNode):
             A completed state.
         """
         return {
+            "messages": AIMessage(content=structured_response.message_to_user),
             "user_confirmation_completed": True,
             "user_confirmation_response": structured_response.model_dump(),
             "should_execute_add_to_cart": structured_response.confirmed,

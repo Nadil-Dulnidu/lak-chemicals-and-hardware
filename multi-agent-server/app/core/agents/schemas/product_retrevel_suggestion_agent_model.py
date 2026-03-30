@@ -2,6 +2,9 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
+from app.core.agents.constants import ProductRetrievalSuggestionAgentEnum
+
+
 class SuggestedProduct(BaseModel):
 
     product_id: str = Field(..., description="Unique identifier of the product.")
@@ -20,23 +23,10 @@ class SuggestedProduct(BaseModel):
     )
 
 
-class ProductGroup(BaseModel):
-
-    category: str = Field(..., description="Category of products grouped together.")
-
-    purpose: str = Field(
-        ..., description="Why this category is needed based on user requirements."
-    )
-
-    products: List[SuggestedProduct] = Field(
-        ..., description="List of suggested products for this category."
-    )
-
-
 class ProductSuggestionAgentResponse(BaseModel):
 
-    suggestions: List[ProductGroup] = Field(
-        ..., description="Grouped product suggestions based on user requirements."
+    suggestions: List[SuggestedProduct] = Field(
+        ..., description="List of suggested products based on user requirements."
     )
 
     total_products_considered: int = Field(
@@ -48,9 +38,9 @@ class ProductSuggestionAgentResponse(BaseModel):
         ..., description="Number of products returned after filtering and ranking."
     )
 
-    availability_status: str = Field(
+    availability_status: ProductRetrievalSuggestionAgentEnum = Field(
         ...,
-        description="Overall availability status: 'available', 'no_match', 'out_of_stock', 'not_sold'.",
+        description="Overall availability status: 'AVAILABLE', 'NO_MATCH', 'OUT_OF_STOCK', 'NOT_SOLD'.",
     )
 
     message_to_user: str = Field(

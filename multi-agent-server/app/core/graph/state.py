@@ -7,6 +7,10 @@ from app.core.agents.schemas import (
     UserConfirmationAgentResponse,
     AnalyticsQueryValidationAgentResponse,
     AnalyticsRouterAgentResponse,
+    InventoryAnalyticsAgentResponse,
+    ProductPerformanceAgentResponse,
+    SalesAnalyticsAgentResponse,
+    SalesPredictionAgentResponse,
 )
 
 
@@ -17,10 +21,10 @@ class GraphState(MessagesState):
     is_admin: bool = False
     base_user_query: str | None = None
     interrupt_question: str | None = None
-    clarification_validation_completed: bool = False
     clarification_validation_response: ClarificationValidationAgentResponse | None = (
         None
     )
+    clarification_validation_completed: bool = False
     product_intelligence_response: ProductIntelligenceAgentResponse | None = None
     product_suggestion_response: ProductSuggestionAgentResponse | None = None
     user_confirmation_response: UserConfirmationAgentResponse | None = None
@@ -32,3 +36,7 @@ class GraphState(MessagesState):
         AnalyticsQueryValidationAgentResponse | None
     ) = None
     analytics_router_response: AnalyticsRouterAgentResponse | None = None
+    inventory_analytics_response: InventoryAnalyticsAgentResponse | None = None
+    product_performance_response: ProductPerformanceAgentResponse | None = None
+    sales_analytics_response: SalesAnalyticsAgentResponse | None = None
+    sales_prediction_response: SalesPredictionAgentResponse | None = None

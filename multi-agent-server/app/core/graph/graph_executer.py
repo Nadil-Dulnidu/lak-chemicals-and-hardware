@@ -10,6 +10,11 @@ from app.core.agents.agents import (
     get_product_suggestion_agent,
     get_add_to_cart_agent,
     get_analytics_quiry_validation_agent,
+    get_analytics_router_agent,
+    get_inventory_analytics_agent,
+    get_product_performance_agent,
+    get_sales_analytics_agent,
+    get_sales_prediction_agent,
 )
 from app.core.graph.state import GraphState
 from app.core.graph.graph_builder import GraphBuilder
@@ -77,6 +82,11 @@ class GraphExecuter:
         product_suggestion_agent = get_product_suggestion_agent()
         add_to_cart_agent = get_add_to_cart_agent()
         analytics_query_validation_agent = get_analytics_quiry_validation_agent()
+        analytics_router_agent = get_analytics_router_agent()
+        inventory_analytics_agent = get_inventory_analytics_agent()
+        product_performance_agent = get_product_performance_agent()
+        sales_analytics_agent = get_sales_analytics_agent()
+        sales_prediction_agent = get_sales_prediction_agent()
         checkpointer = checkpointer or InMemorySaver()
 
         # Build the graph
@@ -87,6 +97,11 @@ class GraphExecuter:
             user_confirmation_agent=user_confirmation_agent,
             add_to_cart_agent=add_to_cart_agent,
             analytics_query_validation_agent=analytics_query_validation_agent,
+            analytics_router_agent=analytics_router_agent,
+            inventory_analytics_agent=inventory_analytics_agent,
+            product_performance_agent=product_performance_agent,
+            sales_analytics_agent=sales_analytics_agent,
+            sales_prediction_agent=sales_prediction_agent,
             checkpointer=checkpointer,
         )
 
@@ -125,188 +140,188 @@ def get_compiled_graph(checkpointer=None):
 compiled_graph = get_compiled_graph()
 
 
-if __name__ == "__main__":
-    """
-    Interactive example of the interview coach graph.
+# if __name__ == "__main__":
+#     """
+#     Interactive example of the interview coach graph.
 
-    This demonstrates how to:
-    1. Stream the graph execution in real-time
-    2. Handle interrupts and display them to the user
-    3. Use LangGraph Command API to resume after interrupts
-    4. Loop until the workflow completes
-    """
-    from langgraph.types import Command
+#     This demonstrates how to:
+#     1. Stream the graph execution in real-time
+#     2. Handle interrupts and display them to the user
+#     3. Use LangGraph Command API to resume after interrupts
+#     4. Loop until the workflow completes
+#     """
+#     from langgraph.types import Command
 
-    print("=" * 80)
-    print("🤖 AI INTERVIEW COACH - Interactive Demo")
-    print("=" * 80)
-    print("\nThis demo will guide you through the interview preparation process.")
-    print("Answer the questions as they appear, and type 'quit' to exit.\n")
+#     print("=" * 80)
+#     print("🤖 AI INTERVIEW COACH - Interactive Demo")
+#     print("=" * 80)
+#     print("\nThis demo will guide you through the interview preparation process.")
+#     print("Answer the questions as they appear, and type 'quit' to exit.\n")
 
-    # Configuration for thread persistence
-    config = {"configurable": {"thread_id": "thread-1"}}
+#     # Configuration for thread persistence
+#     config = {"configurable": {"thread_id": "thread-1"}}
 
-    # Initial user message
-    user_input = input("👤 What job are you applying for? ")
-    if user_input.lower() == "quit":
-        print("Exiting...")
-        exit(0)
+#     # Initial user message
+#     # user_input = input("👤 What job are you applying for? ")
+#     # if user_input.lower() == "quit":
+#     #     print("Exiting...")
+#     #     exit(0)
 
-    # user_input = """
-    #         [
-    #     {
-    #         "product_id": "9e5e65dc-563d-4c80-a7a4-c01e2beb02df",
-    #         "name": "Heavy Duty Wrench",
-    #         "category": "tools",
-    #         "price": 1200,
-    #         "stock_qty": 15,
-    #         "short_reason": "Suitable for tightening and loosening bolts and nuts in plumbing and repair tasks."
-    #     },
-    #     {
-    #         "product_id": "15b11d65-835d-4d2c-89c8-4ef24e350def",
-    #         "name": "Adjustable Hammer Drill",
-    #         "category": "tools",
-    #         "price": 8500,
-    #         "stock_qty": 8,
-    #         "short_reason": "Ideal for drilling into concrete and hard surfaces with high torque and impact mode."
-    #     }
-    #     ]
-    # """
+#     user_input = """
+#             [
+#         {
+#             "product_id": "9e5e65dc-563d-4c80-a7a4-c01e2beb02df",
+#             "name": "Heavy Duty Wrench",
+#             "category": "tools",
+#             "price": 1200,
+#             "stock_qty": 15,
+#             "short_reason": "Suitable for tightening and loosening bolts and nuts in plumbing and repair tasks."
+#         },
+#         {
+#             "product_id": "15b11d65-835d-4d2c-89c8-4ef24e350def",
+#             "name": "Adjustable Hammer Drill",
+#             "category": "tools",
+#             "price": 8500,
+#             "stock_qty": 8,
+#             "short_reason": "Ideal for drilling into concrete and hard surfaces with high torque and impact mode."
+#         }
+#         ]
+#     """
 
-    # Create initial state
-    initial_state = GraphState(messages=[HumanMessage(content=user_input)])
+#     # Create initial state
+#     initial_state = GraphState(messages=[HumanMessage(content=user_input)])
 
-    # Track if we're resuming from an interrupt
-    is_resuming = False
-    resume_input = None
+#     # Track if we're resuming from an interrupt
+#     is_resuming = False
+#     resume_input = None
 
-    # Interactive loop
-    while True:
-        print("\n" + "-" * 80)
-        print("🔄 Processing...")
-        print("-" * 80)
+#     # Interactive loop
+#     while True:
+#         print("\n" + "-" * 80)
+#         print("🔄 Processing...")
+#         print("-" * 80)
 
-        # Determine what to invoke
-        if is_resuming:
-            # Resume from checkpoint and provide the user's answer
-            # The value passed to Command(resume=...) is what interrupt() returns
-            invoke_input = Command(resume=resume_input)
-        else:
-            # First run with initial state
-            invoke_input = initial_state
+#         # Determine what to invoke
+#         if is_resuming:
+#             # Resume from checkpoint and provide the user's answer
+#             # The value passed to Command(resume=...) is what interrupt() returns
+#             invoke_input = Command(resume=resume_input)
+#         else:
+#             # First run with initial state
+#             invoke_input = initial_state
 
-        # Stream the graph execution
-        try:
-            stream = compiled_graph.stream(
-                invoke_input, config=config, stream_mode="values"
-            )
+#         # Stream the graph execution
+#         try:
+#             stream = compiled_graph.stream(
+#                 invoke_input, config=config, stream_mode="values"
+#             )
 
-            interrupt_found = False
-            last_state = None
+#             interrupt_found = False
+#             last_state = None
 
-            for chunk in stream:
-                # With stream_mode="values", chunk is the complete state
-                if chunk is None:
-                    continue
+#             for chunk in stream:
+#                 # With stream_mode="values", chunk is the complete state
+#                 if chunk is None:
+#                     continue
 
-                last_state = chunk
+#                 last_state = chunk
 
-                # Check for interrupts in the state
-                if isinstance(chunk, dict) and "__interrupt__" in chunk:
-                    interrupt_found = True
-                    interrupts = chunk["__interrupt__"]
+#                 # Check for interrupts in the state
+#                 if isinstance(chunk, dict) and "__interrupt__" in chunk:
+#                     interrupt_found = True
+#                     interrupts = chunk["__interrupt__"]
 
-                    print("\n" + "=" * 80)
-                    print("⏸️  INTERRUPT DETECTED")
-                    print("=" * 80)
+#                     print("\n" + "=" * 80)
+#                     print("⏸️  INTERRUPT DETECTED")
+#                     print("=" * 80)
 
-                    # Display all interrupt messages
-                    for interrupt in interrupts:
-                        question = (
-                            interrupt.value
-                            if hasattr(interrupt, "value")
-                            else str(interrupt)
-                        )
-                        print(f"\n🤔 {question}\n")
+#                     # Display all interrupt messages
+#                     for interrupt in interrupts:
+#                         question = (
+#                             interrupt.value
+#                             if hasattr(interrupt, "value")
+#                             else str(interrupt)
+#                         )
+#                         print(f"\n🤔 {question}\n")
 
-                    # Get user response
-                    user_response = input("👤 Your answer: ")
+#                     # Get user response
+#                     user_response = input("👤 Your answer: ")
 
-                    if user_response.lower() == "quit":
-                        print("\n👋 Exiting interview coach. Good luck!")
-                        exit(0)
+#                     if user_response.lower() == "quit":
+#                         print("\n👋 Exiting interview coach. Good luck!")
+#                         exit(0)
 
-                    # Prepare to resume with Command API
-                    is_resuming = True
-                    resume_input = user_response
-                    break
+#                     # Prepare to resume with Command API
+#                     is_resuming = True
+#                     resume_input = user_response
+#                     break
 
-            # If no interrupt found, check if we're done
-            if not interrupt_found:
-                print("\n" + "=" * 80)
-                print("✅ WORKFLOW COMPLETED!")
-                print("=" * 80)
+#             # If no interrupt found, check if we're done
+#             if not interrupt_found:
+#                 print("\n" + "=" * 80)
+#                 print("✅ WORKFLOW COMPLETED!")
+#                 print("=" * 80)
 
-                # Display final results
-                if last_state and isinstance(last_state, dict):
-                    print("\n📋 Final State:")
+#                 # Display final results
+#                 if last_state and isinstance(last_state, dict):
+#                     print("\n📋 Final State:")
 
-                    analytics_inquiry_validation_response = last_state.get(
-                        "analytics_inquiry_validation_response"
-                    )
-                    if analytics_inquiry_validation_response:
-                        print("\n✓ Requirements gathered:")
-                        if hasattr(analytics_inquiry_validation_response, "model_dump"):
-                            import json
+#                     user_confirmation_response = last_state.get(
+#                         "user_confirmation_response"
+#                     )
+#                     if user_confirmation_response:
+#                         print("\n✓ Requirements gathered:")
+#                         if hasattr(user_confirmation_response, "model_dump"):
+#                             import json
 
-                            print(
-                                json.dumps(
-                                    analytics_inquiry_validation_response.model_dump(),
-                                    indent=2,
-                                )
-                            )
-                        else:
-                            print(f"{analytics_inquiry_validation_response}")
+#                             print(
+#                                 json.dumps(
+#                                     user_confirmation_response.model_dump(),
+#                                     indent=2,
+#                                 )
+#                             )
+#                         else:
+#                             print(f"{user_confirmation_response}")
 
-                    # interview_strategy = last_state.get("interview_strategy")
-                    # if interview_strategy:
-                    #     print("\n✓ Interview Strategy generated:")
-                    #     import json
+#                     # interview_strategy = last_state.get("interview_strategy")
+#                     # if interview_strategy:
+#                     #     print("\n✓ Interview Strategy generated:")
+#                     #     import json
 
-                    #     print(json.dumps(interview_strategy, indent=2))
+#                     #     print(json.dumps(interview_strategy, indent=2))
 
-                    # interview_questions = last_state.get("interview_questions")
-                    # if interview_questions:
-                    #     print("\n✓ Interview Questions generated:")
-                    #     import json
+#                     # interview_questions = last_state.get("interview_questions")
+#                     # if interview_questions:
+#                     #     print("\n✓ Interview Questions generated:")
+#                     #     import json
 
-                    #     print(json.dumps(interview_questions, indent=2))
+#                     #     print(json.dumps(interview_questions, indent=2))
 
-                    # interview_output = last_state.get("interview_output")
-                    # if interview_output:
-                    #     print("\n✓ Interviewer generated:")
-                    #     import json
+#                     # interview_output = last_state.get("interview_output")
+#                     # if interview_output:
+#                     #     print("\n✓ Interviewer generated:")
+#                     #     import json
 
-                    #     print(json.dumps(interview_output, indent=2))
+#                     #     print(json.dumps(interview_output, indent=2))
 
-                    # interview_evaluation = last_state.get("interview_evaluation")
-                    # if interview_evaluation:
-                    #     print("\n✓ Interview Evaluation generated:")
-                    #     import json
+#                     # interview_evaluation = last_state.get("interview_evaluation")
+#                     # if interview_evaluation:
+#                     #     print("\n✓ Interview Evaluation generated:")
+#                     #     import json
 
-                    #     print(json.dumps(interview_evaluation, indent=2))
+#                     #     print(json.dumps(interview_evaluation, indent=2))
 
-                print("\n🎉 Your interview preparation is complete!")
+#                 print("\n🎉 Your interview preparation is complete!")
 
-                break
+#                 break
 
-        except Exception as e:
-            print(f"\n❌ Error occurred: {str(e)}")
-            import traceback
+#         except Exception as e:
+#             print(f"\n❌ Error occurred: {str(e)}")
+#             import traceback
 
-            traceback.print_exc()
-            break
+#             traceback.print_exc()
+#             break
 
-    print("\n" + "=" * 80)
-    print("Thank you for using AI Interview Coach!")
-    print("=" * 80)
+#     print("\n" + "=" * 80)
+#     print("Thank you for using AI Interview Coach!")
+#     print("=" * 80)

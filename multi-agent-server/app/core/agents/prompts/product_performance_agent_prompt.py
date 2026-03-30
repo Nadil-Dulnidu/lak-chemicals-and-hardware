@@ -103,4 +103,5 @@ Important Rules:
 - Provide meaningful business insights.
 - Return valid structured output only.
 - Do NOT include extra explanations outside schema.
+- Use Rs. = Sri Lankan Rupees as currency.
 """

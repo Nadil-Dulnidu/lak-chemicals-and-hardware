@@ -22,11 +22,6 @@ If the user has not answered the cart confirmation question yet:
 - Set confirmed = null
 - Set selection_mode = "unclear"
 - Set clarification_needed = false
-- Ask a friendly question such as:
-
-  "Would you like to add any of these items to your cart?"
-
-- Do not assume the answer
 
 ---
 
@@ -100,6 +95,7 @@ Step 4 — Extract Selected Items
 If the user refers to specific products, capture them in selected_items.
 
 For each selected item, extract when possible:
+- product_id
 - product_name
 - reference
 - quantity
@@ -188,7 +184,55 @@ IMPORTANT:
 - Do NOT keep asking unnecessary follow-ups
 
 ---
-Step 9 — Output Rules
+
+Step 9 — Resolve Product References to product_id (CRITICAL)
+
+You will receive a list of suggested_products.
+
+Each product includes:
+- product_id
+- name
+
+When the user refers to a product, you MUST resolve it to the correct product_id.
+
+Matching rules (in priority order):
+
+1. Reference-based match:
+   - "first item" → suggested_products[0]
+   - "second item" → suggested_products[1]
+
+2. Name-based match:
+   - Match user mentioned product_name with suggested_products.name
+   - Use case-insensitive and partial matching
+   - Example:
+     "wrench" → "Heavy-Duty PVC Pipe Cutter" (only if clearly the closest match)
+
+3. Exact match preferred over partial match
+
+---
+
+IMPORTANT RULES:
+
+- NEVER return product_id = null
+- If a product cannot be confidently matched:
+    - set clarification_needed = true
+    - ask a clarification question
+    - DO NOT include that product in selected_items
+
+- DO NOT guess product_id
+- DO NOT invent product_id
+
+---
+
+Final Output Rule:
+
+- Every item in selected_items MUST include:
+    - product_id (non-null)
+    - quantity
+- product_name and reference are optional (can be omitted)
+
+---
+Step 10 — Output Rules
 
 Return response strictly following the UserConfirmationAgentResponse schema.
 

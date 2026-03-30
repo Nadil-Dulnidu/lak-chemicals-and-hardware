@@ -16,8 +16,17 @@ from app.core.graph.nodes import (
     AddToCartNode,
     AnalyticsQueryValidationNode,
     AnalyticsRouterNode,
+    InventoryAnalyticsNode,
+    ProductPerformanceNode,
+    SalesAnalyticsNode,
+    SalesPredictionNode,
+    UserApologiseEndNode,
 )
 
+from app.core.agents.constants import (
+    AnalyticsRouterAgentEnum,
+    ProductRetrievalSuggestionAgentEnum,
+)
 
 logger = get_logger(__name__)
 
@@ -47,6 +56,10 @@ class GraphBuilder:
         add_to_cart_agent,
         analytics_query_validation_agent,
         analytics_router_agent,
+        inventory_analytics_agent,
+        product_performance_agent,
+        sales_analytics_agent,
+        sales_prediction_agent,
         checkpointer: Optional[BaseCheckpointSaver] = None,
     ):
         """
@@ -65,7 +78,9 @@ class GraphBuilder:
             "clarification_validation": ClarificationValidationNode(
                 clarification_validation_agent
             ),
-            "ask_interrupt_questions": AskInterruptQuestionsNode(),
+            "ask_interrupt_questions_for_user_clarification_confirmation": AskInterruptQuestionsNode(),
+            "ask_interrupt_questions_for_analytics_inquiry_confirmation": AskInterruptQuestionsNode(),
+            "ask_interrupt_questions_for_add_to_cart_confirmation": AskInterruptQuestionsNode(),
             "product_intelligence": ProductIntelligenceAgentNode(
                 product_intelligence_agent
             ),
@@ -77,6 +92,11 @@ class GraphBuilder:
                 analytics_query_validation_agent
             ),
             "analytics_router": AnalyticsRouterNode(analytics_router_agent),
+            "inventory_analytics": InventoryAnalyticsNode(inventory_analytics_agent),
+            "product_performance": ProductPerformanceNode(product_performance_agent),
+            "sales_analytics": SalesAnalyticsNode(sales_analytics_agent),
+            "sales_prediction": SalesPredictionNode(sales_prediction_agent),
+            "user_apologise_end": UserApologiseEndNode(),
         }
 
         logger.info(
@@ -108,27 +128,41 @@ class GraphBuilder:
             "clarification_validation",
             self._should_ask_more_questions,
             {
-                True: "ask_interrupt_questions",
+                True: "ask_interrupt_questions_for_user_clarification_confirmation",
                 False: "product_intelligence",
             },
         )
 
-        self.state_graph.add_edge("ask_interrupt_questions", "clarification_validation")
+        self.state_graph.add_edge(
+            "ask_interrupt_questions_for_user_clarification_confirmation",
+            "clarification_validation",
+        )
 
         self.state_graph.add_edge("product_intelligence", "product_suggestion")
 
-        self.state_graph.add_edge("product_suggestion", "user_confirmation")
+        self.state_graph.add_conditional_edges(
+            "product_suggestion",
+            self._check_suggest_product_available,
+            {
+                True: "user_confirmation",
+                False: "user_apologise_end",
+            },
+        )
+
+        self.state_graph.add_edge("user_apologise_end", END)
 
         self.state_graph.add_conditional_edges(
             "user_confirmation",
             self._should_ask_user_clarification,
             {
-                True: "ask_interrupt_questions",
+                True: "ask_interrupt_questions_for_add_to_cart_confirmation",
                 False: "add_to_cart_gateway",
             },
         )
 
-        self.state_graph.add_edge("ask_interrupt_questions", "user_confirmation")
+        self.state_graph.add_edge(
+            "ask_interrupt_questions_for_add_to_cart_confirmation", "user_confirmation"
+        )
 
         self.state_graph.add_conditional_edges(
             "add_to_cart_gateway",
@@ -145,16 +179,31 @@ class GraphBuilder:
             "analytics_query_validation",
             self._should_ask_analytics_inquiry_validation,
             {
-                True: "ask_interrupt_questions",
+                True: "ask_interrupt_questions_for_analytics_inquiry_confirmation",
                 False: "analytics_router",
             },
         )
 
         self.state_graph.add_edge(
-            "ask_interrupt_questions", "analytics_query_validation"
+            "ask_interrupt_questions_for_analytics_inquiry_confirmation",
+            "analytics_query_validation",
         )
 
-        self.state_graph.add_edge("analytics_router", END)
+        self.state_graph.add_conditional_edges(
+            "analytics_router",
+            self._check_admin_query,
+            {
+                AnalyticsRouterAgentEnum.INVENTORY_ANALYSIS: "inventory_analytics",
+                AnalyticsRouterAgentEnum.PRODUCT_PERFORMANCE: "product_performance",
+                AnalyticsRouterAgentEnum.SALES_ANALYSIS: "sales_analytics",
+                AnalyticsRouterAgentEnum.SALES_PREDICTION: "sales_prediction",
+            },
+        )
+
+        self.state_graph.add_edge("inventory_analytics", END)
+        self.state_graph.add_edge("product_performance", END)
+        self.state_graph.add_edge("sales_analytics", END)
+        self.state_graph.add_edge("sales_prediction", END)
 
         logger.debug("Graph edges configured")
 
@@ -170,9 +219,7 @@ class GraphBuilder:
         Returns:
             True if more questions are needed, False otherwise.
         """
-        needs_more_questions = not state.get(
-            "clarification_validation_completed", False
-        )
+        needs_more_questions = not state.get("clarification_validation_completed")
         logger.debug(f"Should ask more questions: {needs_more_questions}")
         return needs_more_questions
 
@@ -243,6 +290,56 @@ class GraphBuilder:
         is_admin = state.get("is_admin", False)
         logger.debug(f"Is admin: {is_admin}")
         return is_admin
+
+    def _check_admin_query(self, state: GraphState) -> AnalyticsRouterAgentEnum:
+        """
+        Determine if the user query is an admin query.
+
+        This is a routing function used in conditional edges.
+
+        Args:
+            state: Current state of the workflow.
+
+        Returns:
+            True if the user query is an admin query, False otherwise.
+        """
+        analytics_router_response = state["analytics_router_response"]
+        admin_query = analytics_router_response.get("query_type", None)
+        logger.debug(f"Is admin query: {admin_query}")
+        return admin_query
+
+    def _check_suggest_product_available(self, state: GraphState) -> bool:
+        """
+        Determine if the suggested product is available.
+
+        This is a routing function used in conditional edges.
+
+        Args:
+            state: Current state of the workflow.
+
+        Returns:
+            True if the suggested product is available, False otherwise.
+        """
+        suggest_product_available = state["product_suggestion_response"].get(
+            "availability_status", None
+        )
+
+        print(f"suggest_product_available: {suggest_product_available}")
+
+        if not suggest_product_available:
+            logger.debug("Suggested product availability is not available")
+            return False
+
+        if (
+            suggest_product_available == ProductRetrievalSuggestionAgentEnum.AVAILABLE
+            or suggest_product_available
+            == ProductRetrievalSuggestionAgentEnum.ALTERNATIVE_AVAILABLE
+        ):
+            logger.debug("Suggested product is available")
+            return True
+        else:
+            logger.debug("Suggested product is not available")
+            return False
 
     def build(self) -> StateGraph:
         """

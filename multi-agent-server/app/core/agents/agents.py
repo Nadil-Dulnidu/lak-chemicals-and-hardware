@@ -553,7 +553,7 @@ class AgentManager:
                     try:
                         logger.info("Creating user confirmation agent.")
                         self._user_confirmation_agent = Agent(
-                            model=self._get_genai_model(),
+                            model=self._get_genai_reasoning_model(),
                             name="user_confirmation_agent",
                             tools=[],
                             prompt=USER_CONFIRMATION_AGENT_PROMPT,

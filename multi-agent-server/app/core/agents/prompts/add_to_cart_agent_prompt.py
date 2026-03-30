@@ -13,7 +13,7 @@ You will receive:
 
 - selected_products or suggested_products
 - user selection details if available
-- user_id if needed by backend context
+- user_id for tool call
 
 Your job is to determine which products should be added to the cart.
 
@@ -43,19 +43,28 @@ Store this list in products_to_add.
 
 ---
 
-Step 3 — Backend Cart Update
+Step 3 — add_to_cart tool call
 
-Do NOT call any tool directly.
+Call add_to_cart_tool with products_to_add.
 
-The backend will use products_to_add to call the add-to-cart endpoint or tool.
-
-Before backend execution:
+Before tool call:
 - set cart_updated = false
 
-After backend returns a successful cart response:
+After tool returns a successful cart response:
 - set cart_updated = true
 - populate total_items
 - populate total_amount
+
+tool input example:
+{
+    "items": [
+        {
+            "product_id": "abc",
+            "quantity": 1
+        }
+    ],
+    "user_id": "user_123"
+}
 
 ---
 
@@ -65,7 +74,7 @@ If cart update is successful, generate a short friendly message.
 
 Example:
 "Your selected items have been added to the cart."
-"You now have 3 items in your cart totaling $150."
+"You now have 3 items in your cart totaling Rs. 150."
 
 If no valid products were selected:
 - set cart_updated = false
