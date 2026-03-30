@@ -53,7 +53,7 @@ type DataPart = {
 
 type MessagePart = TextPart | ToolPart | DataPart | { type: string; [key: string]: unknown };
 
-function ChatApp() {
+export default function ChatApp() {
   const [input, setInput] = useState("");
   // Persist threadId — reuse the same thread across reloads
   const [threadId, setThreadId] = useState(() => loadFromStorage<string>(STORAGE_KEY_THREAD, ""));
@@ -398,5 +398,3 @@ function ChatApp() {
     );
   };
 }
-
-export default ChatApp;
