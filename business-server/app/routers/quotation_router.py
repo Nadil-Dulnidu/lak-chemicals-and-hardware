@@ -33,7 +33,7 @@ async def get_all_quotations(
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
     _user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Get all quotations.
@@ -230,7 +230,7 @@ async def update_quotation_status(
     status_data: QuotationUpdateStatus,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Update quotation status.
@@ -317,7 +317,7 @@ async def delete_quotation(
     quotation_id: int,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Delete a quotation.

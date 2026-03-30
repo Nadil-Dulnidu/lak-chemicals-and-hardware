@@ -797,13 +797,9 @@ export function DownloadableReport({ children, fileName = "report", data, report
           autoTable(doc, {
             startY: currentY,
             head: [["Rank", "Product", "Orders", "Qty Sold", "Revenue (LKR)"]],
-            body: sales.product_breakdown.slice(0, 10).map((p, i) => [
-              `#${i + 1}`,
-              p.product_name,
-              p.sales_count?.toString() || "0",
-              p.quantity_sold?.toString() || "0",
-              p.revenue?.toLocaleString() || "0",
-            ]),
+            body: sales.product_breakdown
+              .slice(0, 10)
+              .map((p, i) => [`#${i + 1}`, p.product_name, p.sales_count?.toString() || "0", p.quantity_sold?.toString() || "0", p.revenue?.toLocaleString() || "0"]),
             margin: { left: 14, right: 14 },
             theme: "striped",
             styles: { fontSize: 9 },

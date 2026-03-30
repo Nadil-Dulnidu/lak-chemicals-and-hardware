@@ -343,7 +343,11 @@ export default function AdminProductsPage() {
                         <Spinner className="h-4 w-4" />
                         {imageFile && !editingProduct ? "Uploading & Saving..." : "Saving..."}
                       </span>
-                    ) : editingProduct ? "Update" : "Create"}
+                    ) : editingProduct ? (
+                      "Update"
+                    ) : (
+                      "Create"
+                    )}
                   </Button>
                 </div>
               </form>

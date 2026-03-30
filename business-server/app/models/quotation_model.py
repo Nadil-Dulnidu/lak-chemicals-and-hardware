@@ -5,6 +5,7 @@ from datetime import datetime
 from app.constants import QuotationStatus
 from app.utils.db import Base
 
+
 class Quotation(Base):
     """
     Model for quotation requests.
