@@ -31,11 +31,11 @@ class ClarificationValidationAgentResponse(BaseModel):
         description="Mapping of questions to user-provided answers.",
     )
 
-    current_question: Optional[str] = Field(
-        None,
-        description="The next question to ask the user. Only one question at a time.",
-    )
-
     refined_query: Optional[str] = Field(
         None, description="Final refined query after all clarifications are completed."
+    )
+
+    message_to_user: str = Field(
+        ...,
+        description="Friendly message either asking for clarification or confirming that the request is understood.",
     )

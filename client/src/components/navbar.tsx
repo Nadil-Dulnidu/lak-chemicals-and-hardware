@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, Package, ShoppingCart, FileText, ClipboardList, BarChart3, Truck, Menu, X, Wrench, Shield } from "lucide-react";
+import { Home, Package, ShoppingCart, FileText, ClipboardList, BarChart3, Truck, Menu, X, Wrench, Shield, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { UserButton, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
@@ -26,6 +26,7 @@ const adminNavItems = [
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/inventory", label: "Inventory", icon: Wrench },
+  { href: "/admin/chat", label: "AI Chat", icon: MessageSquareText },
 ];
 
 interface NavbarProps {

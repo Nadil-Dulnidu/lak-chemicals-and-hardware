@@ -28,7 +28,7 @@ class UserConfirmationAgentResponse(BaseModel):
         description="True if the current user message is answering the confirmation question.",
     )
 
-    confirmed: Optional[bool] = Field(
+    confirmed: bool | None = Field(
         None, description="True = yes, False = no, None = not answered yet."
     )
 
@@ -51,4 +51,7 @@ class UserConfirmationAgentResponse(BaseModel):
         None, description="Follow-up question if needed."
     )
 
-    message_to_user: str = Field(..., description="Friendly response message.")
+    message_to_user: str = Field(
+        ...,
+        description="Response message. If clarification is needed, ask a question. If the user has confirmed, say thank you and confirm the action.",
+    )

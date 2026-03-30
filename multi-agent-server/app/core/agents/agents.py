@@ -553,7 +553,7 @@ class AgentManager:
                     try:
                         logger.info("Creating user confirmation agent.")
                         self._user_confirmation_agent = Agent(
-                            model=self._get_genai_model(),
+                            model=self._get_genai_reasoning_model(),
                             name="user_confirmation_agent",
                             tools=[],
                             prompt=USER_CONFIRMATION_AGENT_PROMPT,
@@ -593,14 +593,17 @@ class AgentManager:
                             prompt=ANALYTICS_QUERY_VALIDATION_AGENT_PROMPT,
                             response_format=AnalyticsQueryValidationAgentResponse,
                         ).create_agent()
-                        logger.info("Analytics inquiry validation agent created successfully.")
+                        logger.info(
+                            "Analytics inquiry validation agent created successfully."
+                        )
                     except Exception as exc:
                         logger.error(
-                            "Failed to create analytics inquiry validation agent: %s", exc
+                            "Failed to create analytics inquiry validation agent: %s",
+                            exc,
                         )
                         raise
 
-        return self._analytics_quiry_validation_agent    
+        return self._analytics_quiry_validation_agent
 
     def reset(self) -> None:
         """
@@ -846,6 +849,7 @@ def get_user_confirmation_agent():
         AgentInitializationError: If the agent cannot be created.
     """
     return _manager.get_user_confirmation_agent()
+
 
 def get_analytics_quiry_validation_agent():
     """

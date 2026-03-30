@@ -23,8 +23,11 @@ def test_product_list_tool_output():
     # The tool should NOT return an error
     assert "error" not in result, f"Tool returned an error: {result.get('error')}"
 
+    # Check the response is a dict
+    assert isinstance(result, ProductListToolResponse)
+
     # Check the expected top-level keys are present
-    assert "products" in result
-    assert "total" in result
-    assert "skip" in result
-    assert "limit" in result
+    assert hasattr(result, "products")
+    assert hasattr(result, "total")
+    assert hasattr(result, "skip")
+    assert hasattr(result, "limit")

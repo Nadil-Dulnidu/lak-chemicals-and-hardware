@@ -2,7 +2,8 @@ from langgraph.types import interrupt
 
 from app.core.graph.state import GraphState
 from app.core.graph.nodes.base_node import BaseNode
-from langchain_core.messages import HumanMessage
+
+from langchain_core.messages import AIMessage
 
 
 class AddToCartGatewayNode(BaseNode):
@@ -11,4 +12,4 @@ class AddToCartGatewayNode(BaseNode):
 
     def execute(self, state: GraphState) -> GraphState:
         self._log_start()
-        return state
+        return {"messages": AIMessage(content="")}

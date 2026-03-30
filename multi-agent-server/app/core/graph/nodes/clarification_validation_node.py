@@ -49,7 +49,7 @@ class ClarificationValidationNode(BaseNode):
 
             structured_response = response["structured_response"]
 
-            if structured_response.current_question:
+            if not (structured_response.is_clear and structured_response.in_scope):
                 result = self._create_clarification_message(state, structured_response)
                 self._log_end("Clarification message created successfully")
                 return result
@@ -57,8 +57,6 @@ class ClarificationValidationNode(BaseNode):
                 result = self._create_completed_state(state, structured_response)
                 self._log_end("Completed state created successfully")
                 return result
-
-            return result
 
         except Exception as e:
             self._log_error(str(e))
@@ -80,7 +78,7 @@ class ClarificationValidationNode(BaseNode):
             A clarification message.
         """
         return {
-            "interrupt_question": structured_response.current_question,
+            "interrupt_question": structured_response.message_to_user,
         }
 
     def _create_completed_state(
@@ -98,7 +96,7 @@ class ClarificationValidationNode(BaseNode):
             A completed state.
         """
         return {
-            "interrupt_question": None,
+            "messages": AIMessage(content=f"{structured_response.message_to_user}\n\n"),
             "clarification_validation_completed": True,
             "clarification_validation_response": structured_response.model_dump(),
         }

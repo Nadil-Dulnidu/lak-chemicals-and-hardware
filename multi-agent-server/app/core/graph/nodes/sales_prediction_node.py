@@ -7,7 +7,7 @@ from app.core.graph.nodes.base_node import BaseNode
 from app.exceptions.graph_exceptions import AgentInvocationError
 
 
-class AnalyticsRouterNode(BaseNode):
+class SalesPredictionNode(BaseNode):
     def __init__(self, agent):
         """
         Initialize the analytics router node.
@@ -15,7 +15,7 @@ class AnalyticsRouterNode(BaseNode):
         Args:
             agent: The analytics router agent.
         """
-        super().__init__("analytics_router_node")
+        super().__init__("sales_prediction_node")
         self.agent = agent
 
     @retry(
@@ -32,12 +32,10 @@ class AnalyticsRouterNode(BaseNode):
             The updated graph state.
         """
         try:
-            self._log_start(state)
+            self._log_start()
 
             # Get the user's query from the state
-            analytics_inquiry_validation_response = state[
-                "analytics_inquiry_validation_response"
-            ]
+            analytics_inquiry_validation_response = state["analytics_router_response"]
 
             if not analytics_inquiry_validation_response:
                 self._log_error(state, "Clarification response not found")
@@ -53,12 +51,11 @@ class AnalyticsRouterNode(BaseNode):
 
             structured_response = response["structured_response"]
 
-            self._log_end(state)
+            self._log_end()
 
             return {
-                "messages": AIMessage(content=""),
-                "analytics_router_response": structured_response.model_dump(),
+                "product_performance_response": structured_response.model_dump(),
             }
         except Exception as e:
-            self._log_error(state, str(e))
+            self._log_error(str(e))
             raise AgentInvocationError(f"Error in product intelligence node: {str(e)}")

@@ -147,4 +147,4 @@ def fetch_product_list(
         params.include_inactive,
     )
 
-    return product_list_response.dict()
+    return product_list_response
