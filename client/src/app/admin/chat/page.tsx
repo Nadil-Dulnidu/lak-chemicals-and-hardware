@@ -11,11 +11,18 @@ import { Loader } from "@/components/ai-elements/loader";
 import { Tool, ToolHeader, ToolContent, ToolInput, ToolOutput } from "@/components/ai-elements/tool";
 import { Suggestions, Suggestion } from "@/components/ai-elements/suggestion";
 import { useUser, useAuth } from "@clerk/nextjs";
-import Greeting from "@/components/Greeting";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { Bot, Sparkles, BarChart3, TrendingUp, Boxes, LineChart, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SalesPredictionComponent } from "@/components/admin-chat/sales-prediction-component";
+import { SalesAnalyticsComponent } from "@/components/admin-chat/sales-analytics-component";
+import { ProductPerformanceComponent } from "@/components/admin-chat/product-performance-component";
+import { InventoryAnalyticsComponent } from "@/components/admin-chat/inventory-analytics-component";
+import { type SalesPredictionResponse } from "@/components/admin-chat/sales-prediction-component";
+import { type SalesAnalyticsResponse } from "@/components/admin-chat/sales-analytics-component";
+import { type ProductPerformanceResponse } from "@/components/admin-chat/product-performance-component";
+import { type InventoryAnalyticsResponse } from "@/components/admin-chat/inventory-analytics-component";
 
 // localStorage keys (separate from customer chat)
 const STORAGE_KEY_THREAD = "lak-admin-chat-thread-id";
@@ -197,13 +204,12 @@ function AdminChatApp() {
       const textPart = part as TextPart;
       return (
         <Message key={`${messageId}-${index}`} from="assistant">
-          <MessageContent>
+          <MessageContent className="mb-3">
             <MessageResponse>{textPart.text}</MessageResponse>
           </MessageContent>
         </Message>
       );
     }
-
     // Render tool calls
     if (part.type.startsWith("tool-")) {
       const toolPart = part as ToolPart;
@@ -237,7 +243,7 @@ function AdminChatApp() {
       if (dataType === "sales_prediction_response" && dataPart.data) {
         return (
           <div key={`${messageId}-${index}`} className="my-4">
-            {/* Render the sales prediction component with the provided data */}
+            <SalesPredictionComponent data={dataPart.data as unknown as SalesPredictionResponse} />
           </div>
         );
       }
@@ -245,7 +251,7 @@ function AdminChatApp() {
       if (dataType === "sales_analytics_response" && dataPart.data) {
         return (
           <div key={`${messageId}-${index}`} className="my-4">
-            {/* // Render the sales analytics component with the provided data */}
+            <SalesAnalyticsComponent data={dataPart.data as unknown as SalesAnalyticsResponse} />
           </div>
         );
       }
@@ -253,7 +259,7 @@ function AdminChatApp() {
       if (dataType === "product_performance_response" && dataPart.data) {
         return (
           <div key={`${messageId}-${index}`} className="my-4">
-            {/* // Render the product performance component with the provided data */}
+            <ProductPerformanceComponent data={dataPart.data as unknown as ProductPerformanceResponse} />
           </div>
         );
       }
@@ -261,7 +267,7 @@ function AdminChatApp() {
       if (dataType === "inventory_analytics_response" && dataPart.data) {
         return (
           <div key={`${messageId}-${index}`} className="my-4">
-            {/* // Render the inventory analytics component with the provided data */}
+            <InventoryAnalyticsComponent data={dataPart.data as unknown as InventoryAnalyticsResponse} />
           </div>
         );
       }
@@ -310,12 +316,7 @@ function AdminChatApp() {
                         <Sparkles className="h-3 w-3 mr-1" />
                         Admin Intelligence Hub
                       </Badge>
-
-                      {isSignedIn && isLoaded ? (
-                        <Greeting name={user?.firstName || "Admin"} className="text-3xl font-bold tracking-tight" showIcon={false} />
-                      ) : (
-                        <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-orange-400">Analytics Assistant</h1>
-                      )}
+                      <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-orange-400">Analytics Assistant</h1>
                       <p className="text-muted-foreground text-base leading-relaxed">
                         Ask about sales predictions, revenue trends, product performance, and inventory health — get instant analytics insights without running reports.
                       </p>
