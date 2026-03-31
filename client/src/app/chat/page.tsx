@@ -97,7 +97,7 @@ export default function ChatApp() {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: `${process.env.NEXT_PUBLIC_AGENT_URL}/chat`,
+        api: `${process.env.NEXT_PUBLIC_API_URL}/chat`,
         headers: async () => {
           const token = await getToken({ template: "lak-chemicles-and-hardware" });
           return {
