@@ -49,11 +49,15 @@ def _get_request_id(request: Request) -> str:
 def _get_upstream_base(path: str) -> tuple[str, str]:
     if path == "chat":
         return (
-            get_config_value("upstreams", "agent", "base_url", default="http://127.0.0.1:8001"),
+            get_config_value(
+                "upstreams", "agent", "base_url", default="http://127.0.0.1:8001"
+            ),
             "agent",
         )
     return (
-        get_config_value("upstreams", "business", "base_url", default="http://127.0.0.1:8000"),
+        get_config_value(
+            "upstreams", "business", "base_url", default="http://127.0.0.1:8000"
+        ),
         "business",
     )
 
@@ -143,24 +147,30 @@ async def proxy_request(path: str, request: Request):
 
     try:
         body = await request.body()
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            if path == "chat":
-                req = client.build_request(
-                    request.method,
-                    url,
-                    headers=headers,
-                    content=body,
-                )
-                upstream_response = await client.send(req, stream=True)
-                response_headers = _filter_headers(upstream_response.headers.items())
-                response_headers["X-Request-ID"] = request_id
-                return StreamingResponse(
-                    upstream_response.aiter_bytes(),
-                    status_code=upstream_response.status_code,
-                    headers=response_headers,
-                    background=BackgroundTask(upstream_response.aclose),
-                )
+        if path == "chat":
+            client = httpx.AsyncClient(timeout=timeout)
+            req = client.build_request(
+                request.method,
+                url,
+                headers=headers,
+                content=body,
+            )
+            upstream_response = await client.send(req, stream=True)
+            response_headers = _filter_headers(upstream_response.headers.items())
+            response_headers["X-Request-ID"] = request_id
 
+            async def close_client():
+                await upstream_response.aclose()
+                await client.aclose()
+
+            return StreamingResponse(
+                upstream_response.aiter_bytes(),
+                status_code=upstream_response.status_code,
+                headers=response_headers,
+                background=BackgroundTask(close_client),
+            )
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
             upstream_response = await client.request(
                 request.method,
                 url,
