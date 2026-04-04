@@ -172,9 +172,10 @@ class GenAIModelManager:
 
                         model_kwargs = {
                             "model": config["model_name"],
-                            "google_api_key": config["api_key"],
+                            "api_key": config["api_key"],
                             "temperature": temperature,
                             "streaming": streaming,
+                            "vertexai": True,
                         }
 
                         if resolved_max_tokens is not None:
