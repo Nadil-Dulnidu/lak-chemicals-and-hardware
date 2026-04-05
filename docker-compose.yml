@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  business-server:
+    build:
+      context: ./business-server
+      dockerfile: Dockerfile
+    container_name: lak-business-server
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  multi-agent-server:
+    build:
+      context: ./multi-agent-server
+      dockerfile: Dockerfile
+    container_name: lak-multi-agent-server
+    ports:
+      - "8001:8001"
+    environment:
+      - BUSINESS_SERVER_BASE_URL=http://business-server:8000
+    depends_on:
+      - business-server
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: lak-api-gateway
+    ports:
+      - "8002:8002"
+    environment:
+      - BUSINESS_BASE_URL=http://business-server:8000
+      - AGENT_BASE_URL=http://multi-agent-server:8001
+    depends_on:
+      - business-server
+      - multi-agent-server
+    restart: unless-stopped
