@@ -53,7 +53,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden lg:flex items-center gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -95,7 +95,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
           </SignedOut>
 
           {/* Mobile Menu Toggle */}
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
@@ -103,7 +103,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur">
+        <div className="lg:hidden border-t border-border/40 bg-background/95 backdrop-blur">
           <div className="container mx-auto px-4 py-4 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
