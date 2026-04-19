@@ -30,6 +30,7 @@ from app.schemas.report_schema import (
     ReportFilterParams,
 )
 from app.services.report_service import ReportService
+from app.constants import ReportType
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -337,6 +338,55 @@ class TestDeleteReport:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# RUN SAVED REPORT
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRunSavedReport:
+    """Tests for ReportService.run_saved_report"""
+
+    async def test_run_saved_sales_report_requires_dates(
+        self,
+        db_session: AsyncSession,
+        report_service: ReportService,
+    ):
+        """Date-based saved reports must include both start_date and end_date."""
+        report = Report(
+            report_name="Sales Without Dates",
+            report_type=ReportType.SALES,
+            parameters=json.dumps({"group_by": "day"}),
+            created_by="admin-user",
+        )
+        db_session.add(report)
+        await db_session.commit()
+        await db_session.refresh(report)
+
+        with pytest.raises(ValueError, match="start_date and end_date are required"):
+            await report_service.run_saved_report(db_session, report.report_id)
+
+    async def test_run_saved_sales_report_rejects_equal_dates(
+        self,
+        db_session: AsyncSession,
+        report_service: ReportService,
+    ):
+        """Saved sales report requires start_date to be strictly before end_date."""
+        report = Report(
+            report_name="Sales Equal Dates",
+            report_type=ReportType.SALES,
+            parameters=json.dumps(
+                {"start_date": "2026-01-01", "end_date": "2026-01-01"}
+            ),
+            created_by="admin-user",
+        )
+        db_session.add(report)
+        await db_session.commit()
+        await db_session.refresh(report)
+
+        with pytest.raises(ValueError, match="start_date must be before end_date"):
+            await report_service.run_saved_report(db_session, report.report_id)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # GENERATE SALES REPORT
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -426,6 +476,14 @@ class TestGenerateSalesReport:
             SalesReportParams(
                 start_date=datetime(2026, 2, 1),
                 end_date=datetime(2026, 1, 1),  # Before start
+            )
+
+    async def test_sales_report_equal_dates_validation(self):
+        """Pydantic rejects end_date equal to start_date."""
+        with pytest.raises(Exception):
+            SalesReportParams(
+                start_date=datetime(2026, 2, 1),
+                end_date=datetime(2026, 2, 1),
             )
 
 
@@ -604,6 +662,14 @@ class TestGenerateProductPerformanceReport:
             ProductPerformanceParams(
                 start_date=datetime(2026, 6, 1),
                 end_date=datetime(2026, 1, 1),  # Before start
+            )
+
+    async def test_product_performance_equal_dates_validation(self):
+        """Pydantic rejects end_date equal to start_date."""
+        with pytest.raises(Exception):
+            ProductPerformanceParams(
+                start_date=datetime(2026, 6, 1),
+                end_date=datetime(2026, 6, 1),
             )
 
 
