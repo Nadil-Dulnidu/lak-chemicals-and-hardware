@@ -71,6 +71,8 @@ export default function AdminSuppliersPage() {
     }
   }, [fetchSuppliers, authToken]);
 
+  const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, "");
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -101,12 +103,23 @@ export default function AdminSuppliersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const normalizedPhone = normalizePhoneNumber(formData.contact_number);
+    if (normalizedPhone.length !== 10) {
+      toast.error("Phone number must contain exactly 10 digits");
+      return;
+    }
+
+    const payload: SupplierCreate = {
+      ...formData,
+      contact_number: normalizedPhone,
+    };
+
     try {
       if (editingSupplier) {
-        await supplierActions.update(editingSupplier.id, formData, authToken);
+        await supplierActions.update(editingSupplier.id, payload, authToken);
         toast.success("Supplier updated successfully");
       } else {
-        await supplierActions.create(formData, authToken);
+        await supplierActions.create(payload, authToken);
         toast.success("Supplier created successfully");
       }
       setIsDialogOpen(false);
@@ -484,10 +497,12 @@ export default function AdminSuppliersPage() {
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        contact_number: e.target.value,
+                        contact_number: normalizePhoneNumber(e.target.value).slice(0, 10),
                       })
                     }
-                    placeholder="+94 XX XXX XXXX"
+                    placeholder="07XXXXXXXX"
+                    inputMode="numeric"
+                    maxLength={10}
                     required
                   />
                 </div>
@@ -564,10 +579,12 @@ export default function AdminSuppliersPage() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          contact_number: e.target.value,
+                          contact_number: normalizePhoneNumber(e.target.value).slice(0, 10),
                         })
                       }
-                      placeholder="+94 XX XXX XXXX"
+                      placeholder="07XXXXXXXX"
+                      inputMode="numeric"
+                      maxLength={10}
                       required
                     />
                   </div>

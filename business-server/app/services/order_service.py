@@ -57,13 +57,15 @@ class OrderService:
                 ),
             )
 
+            normalized_phone = self._validate_and_normalize_phone(order_data.phone)
+
             order_dict = {
                 "user_id": user_id,
                 "cart_id": order_data.cart_id,
                 "payment_method": order_data.payment_method,
                 "notes": order_data.notes,
                 "customer_name": order_data.customer_name,
-                "phone": order_data.phone,
+                "phone": normalized_phone,
                 "address": order_data.address,
                 "city": order_data.city,
             }
@@ -123,13 +125,15 @@ class OrderService:
                 ),
             )
 
+            normalized_phone = self._validate_and_normalize_phone(order_data.phone)
+
             order_dict = {
                 "user_id": user_id,
                 "quotation_id": order_data.quotation_id,
                 "payment_method": order_data.payment_method,
                 "notes": order_data.notes,
                 "customer_name": order_data.customer_name,
-                "phone": order_data.phone,
+                "phone": normalized_phone,
                 "address": order_data.address,
                 "city": order_data.city,
             }
@@ -432,6 +436,21 @@ class OrderService:
     # ──────────────────────────────────────────────────────────────────────
     # INTERNAL HELPERS
     # ──────────────────────────────────────────────────────────────────────
+
+    def _validate_and_normalize_phone(self, phone: Optional[str]) -> Optional[str]:
+        """Validate Sri Lanka phone number format (exactly 10 digits)."""
+        if phone is None:
+            return None
+
+        stripped_phone = phone.strip()
+        if not stripped_phone:
+            return None
+
+        normalized_phone = "".join(ch for ch in stripped_phone if ch.isdigit())
+        if len(normalized_phone) != 10:
+            raise ValueError("Phone number must contain exactly 10 digits")
+
+        return normalized_phone
 
     def _to_response(self, order) -> OrderResponse:
         """Convert Order ORM model → OrderResponse Pydantic schema."""

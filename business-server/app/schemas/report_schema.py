@@ -90,7 +90,7 @@ class SalesReportParams(BaseModel):
     @field_validator("end_date")
     @classmethod
     def validate_date_range(cls, v, info):
-        if v and info.data.get("start_date") and v < info.data["start_date"]:
+        if v and info.data.get("start_date") and v <= info.data["start_date"]:
             raise ValueError("end_date must be after start_date")
         return v
 
@@ -113,7 +113,7 @@ class ProductPerformanceParams(BaseModel):
     @field_validator("end_date")
     @classmethod
     def validate_date_range(cls, v, info):
-        if v and info.data.get("start_date") and v < info.data["start_date"]:
+        if v and info.data.get("start_date") and v <= info.data["start_date"]:
             raise ValueError("end_date must be after start_date")
         return v
 
@@ -138,6 +138,13 @@ class RunReportParams(BaseModel):
     top_n: Optional[int] = Field(None, description="Override top N")
     threshold_percentage: Optional[int] = Field(None, description="Override threshold")
     low_stock_only: Optional[bool] = Field(None, description="Override low stock filter")
+
+    @field_validator("end_date")
+    @classmethod
+    def validate_date_range(cls, v, info):
+        if v and info.data.get("start_date") and v <= info.data["start_date"]:
+            raise ValueError("end_date must be after start_date")
+        return v
 
 
 # ============= Report Data Schemas =============
