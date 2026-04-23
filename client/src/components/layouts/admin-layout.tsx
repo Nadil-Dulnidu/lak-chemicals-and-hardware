@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { Spinner } from "@/components/ui/spinner";
@@ -11,41 +10,12 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-function resolveRole(claims: Record<string, unknown> | null | undefined): string | null {
-  if (!claims) return null;
-  const direct = claims["role"];
-  if (typeof direct === "string" && direct !== "") return direct;
-  const pm = claims["public_metadata"];
-  if (pm && typeof pm === "object") {
-    const pmRole = (pm as Record<string, unknown>)["role"];
-    if (typeof pmRole === "string" && pmRole !== "") return pmRole;
-  }
-  return null;
-}
-
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const { isLoaded, isSignedIn, sessionClaims } = useAuth();
+  const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
-  const [accessChecked, setAccessChecked] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!isSignedIn) {
-      router.replace("/sign-in");
-      return;
-    }
-
-    const role = resolveRole(sessionClaims as Record<string, unknown> | null);
-    if (role === "ADMIN") {
-      setIsAdmin(true);
-    }
-    setAccessChecked(true);
-  }, [isLoaded, isSignedIn, sessionClaims, router]);
 
   // Still loading Clerk
-  if (!isLoaded || !accessChecked) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Spinner className="h-8 w-8" />
@@ -53,8 +23,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
-  // Signed in but not an admin
-  if (!isAdmin) {
+  // Not signed in — redirect
+  if (!isSignedIn) {
+    router.replace("/sign-in");
+    return null;
+  }
+
+  // Check role directly from publicMetadata — always accurate, no JWT parsing needed
+  const role = user?.publicMetadata?.role as string | undefined;
+
+  if (role !== "ADMIN") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4 text-center px-4">
         <div className="p-4 rounded-full bg-red-500/10">

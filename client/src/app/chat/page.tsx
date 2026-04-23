@@ -257,7 +257,7 @@ export default function ChatApp() {
               <div className="flex justify-end mb-2 shrink-0">
                 <Button variant="ghost" size="sm" onClick={handleClearChat} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 transition-colors">
                   <Trash2 className="h-3.5 w-3.5" />
-                  New Chat
+                  Clear Chat
                 </Button>
               </div>
             )}
@@ -286,15 +286,13 @@ export default function ChatApp() {
                       ) : (
                         <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-orange-400">Your Smart Product Assistant</h1>
                       )}
-                      <p className="text-muted-foreground text-base leading-relaxed">
-                        Need help finding the right products? Ask about chemicals, tools, paints, or building materials — get instant expert recommendations.
-                      </p>
+                      <p className="text-muted-foreground text-base leading-relaxed">Need help finding the right products? Ask about requirements and get instant expert recommendations.</p>
                     </div>
 
                     {/* Feature pills */}
                     <div className="flex flex-wrap gap-3 justify-center">
                       {[
-                        { icon: MessageCircle, text: "Ask about products" },
+                        { icon: MessageCircle, text: "Ask about requirements" },
                         { icon: Sparkles, text: "Smart recommendations" },
                         { icon: ShoppingCart, text: "Quick ordering help" },
                       ].map((feature) => {
