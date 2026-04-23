@@ -243,9 +243,15 @@ async def run_saved_report(
         )
         return result
     except ValueError as e:
+        message = str(e)
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=message,
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message,
         )
     except Exception as e:
         raise HTTPException(
@@ -288,6 +294,11 @@ async def generate_sales_report(
     """
     try:
         return await report_service.generate_sales_report(session, params)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -362,6 +373,11 @@ async def generate_product_performance_report(
     """
     try:
         return await report_service.generate_product_performance_report(session, params)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

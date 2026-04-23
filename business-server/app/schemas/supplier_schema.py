@@ -4,6 +4,14 @@ from datetime import datetime
 import uuid
 
 
+def _validate_and_normalize_contact_number(contact_number: str) -> str:
+    """Validate Sri Lanka phone number format (exactly 10 digits)."""
+    cleaned = "".join(ch for ch in contact_number.strip() if ch.isdigit())
+    if len(cleaned) != 10:
+        raise ValueError("Contact number must contain exactly 10 digits")
+    return cleaned
+
+
 class SupplierBase(BaseModel):
     """Base supplier schema with common fields"""
 
@@ -29,11 +37,7 @@ class SupplierCreate(SupplierBase):
     @field_validator("contact_number")
     @classmethod
     def validate_contact_number(cls, v):
-        # Remove spaces and dashes for validation
-        cleaned = v.replace(" ", "").replace("-", "")
-        if not cleaned:
-            raise ValueError("Contact number cannot be empty")
-        return v
+        return _validate_and_normalize_contact_number(v)
 
 
 class SupplierUpdate(BaseModel):
@@ -52,6 +56,13 @@ class SupplierUpdate(BaseModel):
         if v is not None:
             return v.lower().strip()
         return v
+
+    @field_validator("contact_number")
+    @classmethod
+    def validate_contact_number(cls, v):
+        if v is None:
+            return v
+        return _validate_and_normalize_contact_number(v)
 
 
 class SupplierResponse(SupplierBase):

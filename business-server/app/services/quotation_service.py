@@ -465,12 +465,14 @@ class QuotationService:
 
             # Delegate to the new repository method which handles all
             # stock validation, total calculation, and order creation
+            normalized_phone = self._validate_and_normalize_phone(order_data.phone)
+
             create_data = {
                 "user_id": quotation.user_id,
                 "quotation_id": quotation_id,
                 "payment_method": order_data.payment_method,
                 "customer_name": order_data.customer_name,
-                "phone": order_data.phone,
+                "phone": normalized_phone,
                 "address": order_data.address,
                 "city": order_data.city,
                 "notes": order_data.notes or quotation.notes,
@@ -532,6 +534,21 @@ class QuotationService:
             if isinstance(e, ValueError):
                 raise
             return None
+
+    def _validate_and_normalize_phone(self, phone: Optional[str]) -> Optional[str]:
+        """Validate Sri Lanka phone number format (exactly 10 digits)."""
+        if phone is None:
+            return None
+
+        stripped_phone = phone.strip()
+        if not stripped_phone:
+            return None
+
+        normalized_phone = "".join(ch for ch in stripped_phone if ch.isdigit())
+        if len(normalized_phone) != 10:
+            raise ValueError("Phone number must contain exactly 10 digits")
+
+        return normalized_phone
 
     async def filter_quotations(
         self,

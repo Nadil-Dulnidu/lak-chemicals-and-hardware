@@ -77,6 +77,8 @@ function CheckoutContent() {
     fetchData();
   }, [fetchData]);
 
+  const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, "");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -89,6 +91,12 @@ function CheckoutContent() {
     // Validate shipping info
     if (!shippingAddress.name || !shippingAddress.phone || !shippingAddress.address) {
       toast.error("Please fill in all required shipping fields");
+      return;
+    }
+
+    const normalizedPhone = normalizePhoneNumber(shippingAddress.phone);
+    if (normalizedPhone.length !== 10) {
+      toast.error("Phone number must contain exactly 10 digits");
       return;
     }
 
@@ -106,7 +114,7 @@ function CheckoutContent() {
             payment_method: selectedPayment === "cash" ? "Cash on Delivery" : selectedPayment === "card" ? "Card" : "Bank Transfer",
             notes: notes,
             customer_name: shippingAddress.name,
-            phone: shippingAddress.phone,
+            phone: normalizedPhone,
             address: shippingAddress.address,
             city: shippingAddress.city || undefined,
           },
@@ -122,7 +130,7 @@ function CheckoutContent() {
             payment_method: selectedPayment === "cash" ? "Cash on Delivery" : selectedPayment === "card" ? "Card" : "Bank Transfer",
             notes: notes || undefined,
             customer_name: shippingAddress.name,
-            phone: shippingAddress.phone,
+            phone: normalizedPhone,
             address: shippingAddress.address,
             city: shippingAddress.city || undefined,
           },
@@ -221,7 +229,19 @@ function CheckoutContent() {
                     <label className="text-sm font-medium mb-2 block">
                       Phone Number <span className="text-destructive">*</span>
                     </label>
-                    <Input value={shippingAddress.phone} onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })} placeholder="+94 XX XXX XXXX" required />
+                    <Input
+                      value={shippingAddress.phone}
+                      onChange={(e) =>
+                        setShippingAddress({
+                          ...shippingAddress,
+                          phone: normalizePhoneNumber(e.target.value).slice(0, 10),
+                        })
+                      }
+                      placeholder="07XXXXXXXX"
+                      inputMode="numeric"
+                      maxLength={10}
+                      required
+                    />
                   </div>
                 </div>
                 <div>

@@ -380,3 +380,17 @@ class TestOrderSchemaValidation:
         """Invalid status value raises exception."""
         with pytest.raises(Exception):
             OrderUpdateStatus(status="INVALID_STATUS")
+
+    async def test_phone_validation_accepts_10_digits(
+        self, order_service: OrderService
+    ):
+        """Business validation accepts Sri Lanka numbers with exactly 10 digits."""
+        normalized = order_service._validate_and_normalize_phone("077-123 4567")
+        assert normalized == "0771234567"
+
+    async def test_phone_validation_rejects_non_10_digits(
+        self, order_service: OrderService
+    ):
+        """Business validation rejects phone numbers that are not 10 digits."""
+        with pytest.raises(ValueError, match="exactly 10 digits"):
+            order_service._validate_and_normalize_phone("+94771234567")

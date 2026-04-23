@@ -34,7 +34,7 @@ class TestCreateSupplier:
         data = SupplierCreate(
             name="Colombo Traders",
             contact_person="Sanjeev Kumar",
-            contact_number="+94-77-9876543",
+            contact_number="0779876543",
             email="sanjeev@colombotraders.com",
             address="456 Main Street, Colombo 07",
         )
@@ -103,6 +103,24 @@ class TestCreateSupplier:
                 contact_number="",
                 email="test@test.com",
             )
+
+    async def test_create_supplier_invalid_contact_number_length(self):
+        """Pydantic rejects contact numbers that are not exactly 10 digits."""
+        with pytest.raises(Exception):
+            SupplierCreate(
+                name="Invalid Phone Supplier",
+                contact_number="771234567",
+                email="test@test.com",
+            )
+
+    async def test_create_supplier_contact_number_normalized(self):
+        """Contact number is normalized to digits-only when valid."""
+        data = SupplierCreate(
+            name="Normalized Phone Supplier",
+            contact_number="077-123 4567",
+            email="normalized@test.com",
+        )
+        assert data.contact_number == "0771234567"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -307,6 +325,11 @@ class TestUpdateSupplier:
         assert result.name == "Multi Update Supplier"
         assert result.contact_person == "New Person"
         assert result.address == "New Address, Kandy"
+
+    async def test_update_supplier_invalid_contact_number(self):
+        """Pydantic rejects supplier update with non-10-digit contact number."""
+        with pytest.raises(Exception):
+            SupplierUpdate(contact_number="12345")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

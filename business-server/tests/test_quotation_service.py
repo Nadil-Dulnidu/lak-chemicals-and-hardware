@@ -420,3 +420,17 @@ class TestQuotationBusinessRules:
             await quotation_service.create_order_from_quotation(
                 db_session, 99999, order_data, user_id="test-user"
             )
+
+    async def test_phone_validation_accepts_10_digits(
+        self, quotation_service: QuotationService
+    ):
+        """Business validation accepts Sri Lanka numbers with exactly 10 digits."""
+        normalized = quotation_service._validate_and_normalize_phone("071 234 5678")
+        assert normalized == "0712345678"
+
+    async def test_phone_validation_rejects_non_10_digits(
+        self, quotation_service: QuotationService
+    ):
+        """Business validation rejects phone numbers that are not 10 digits."""
+        with pytest.raises(ValueError, match="exactly 10 digits"):
+            quotation_service._validate_and_normalize_phone("771234567")

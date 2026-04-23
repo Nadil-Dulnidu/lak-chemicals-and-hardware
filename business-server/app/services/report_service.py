@@ -298,15 +298,19 @@ class ReportService:
             report_type = report.report_type.value
 
             if report_type == "SALES":
-                # Build SalesReportParams
-                from datetime import datetime
+                self._validate_required_date_range(
+                    params.get("start_date"),
+                    params.get("end_date"),
+                    report_type,
+                )
 
+                # Build SalesReportParams
                 sales_params = SalesReportParams(
                     start_date=self._parse_datetime(
-                        params.get("start_date", datetime.now().isoformat())
+                        params.get("start_date"), field_name="start_date"
                     ),
                     end_date=self._parse_datetime(
-                        params.get("end_date", datetime.now().isoformat())
+                        params.get("end_date"), field_name="end_date"
                     ),
                     product_id=params.get("product_id"),
                     category=params.get("category"),
@@ -322,14 +326,18 @@ class ReportService:
                 result = await self.generate_inventory_report(session, inventory_params)
 
             elif report_type == "PRODUCT_PERFORMANCE":
-                from datetime import datetime
+                self._validate_required_date_range(
+                    params.get("start_date"),
+                    params.get("end_date"),
+                    report_type,
+                )
 
                 perf_params = ProductPerformanceParams(
                     start_date=self._parse_datetime(
-                        params.get("start_date", datetime.now().isoformat())
+                        params.get("start_date"), field_name="start_date"
                     ),
                     end_date=self._parse_datetime(
-                        params.get("end_date", datetime.now().isoformat())
+                        params.get("end_date"), field_name="end_date"
                     ),
                     category=params.get("category"),
                     top_n=params.get("top_n", 10),
@@ -363,23 +371,51 @@ class ReportService:
             )
             raise
 
-    def _parse_datetime(self, value) -> datetime:
+    def _parse_datetime(self, value, field_name: str = "datetime") -> datetime:
         """Parse datetime from string or return as-is if already datetime."""
         if isinstance(value, datetime):
             return value
+
         if isinstance(value, str):
+            stripped_value = value.strip()
+            if not stripped_value:
+                raise ValueError(f"{field_name} is required")
+
             # Try ISO format first
             try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return datetime.fromisoformat(stripped_value.replace("Z", "+00:00"))
             except ValueError:
                 pass
+
             # Try other common formats
             for fmt in ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]:
                 try:
-                    return datetime.strptime(value, fmt)
+                    return datetime.strptime(stripped_value, fmt)
                 except ValueError:
                     continue
-        return datetime.now()
+
+        raise ValueError(f"Invalid {field_name}. Use a valid date or datetime value")
+
+    def _validate_required_date_range(
+        self,
+        start_date_value: Any,
+        end_date_value: Any,
+        report_type: str,
+    ) -> None:
+        """Ensure date-based reports always receive a valid date range."""
+        if start_date_value is None or end_date_value is None:
+            raise ValueError(
+                f"start_date and end_date are required for {report_type} reports"
+            )
+
+        start_date = self._parse_datetime(start_date_value, field_name="start_date")
+        end_date = self._parse_datetime(end_date_value, field_name="end_date")
+        self._validate_date_order(start_date, end_date)
+
+    def _validate_date_order(self, start_date: datetime, end_date: datetime) -> None:
+        """Ensure start_date is strictly earlier than end_date."""
+        if start_date >= end_date:
+            raise ValueError("start_date must be before end_date")
 
     # ============= Report Generation =============
 
@@ -400,6 +436,8 @@ class ReportService:
                     location="ReportService.generate_sales_report",
                 ),
             )
+
+            self._validate_date_order(params.start_date, params.end_date)
 
             # Build base query
             query = select(Sale).where(
@@ -566,6 +604,8 @@ class ReportService:
                     location="ReportService.generate_product_performance_report",
                 ),
             )
+
+            self._validate_date_order(params.start_date, params.end_date)
 
             # Query sales with product info
             query = (

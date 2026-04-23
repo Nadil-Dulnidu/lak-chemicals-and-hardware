@@ -97,6 +97,10 @@ export default function AdminReportsPage() {
       return;
     }
 
+    if ((newReportType === "SALES" || newReportType === "PRODUCT_PERFORMANCE") && !validateDateRange(newReportParams.start_date, newReportParams.end_date)) {
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Build parameters based on report type
@@ -104,8 +108,8 @@ export default function AdminReportsPage() {
 
       if (newReportType === "SALES" || newReportType === "PRODUCT_PERFORMANCE") {
         parameters = {
-          start_date: newReportParams.start_date || new Date().toISOString().split("T")[0],
-          end_date: newReportParams.end_date || new Date().toISOString().split("T")[0],
+          start_date: newReportParams.start_date,
+          end_date: newReportParams.end_date,
           group_by: newReportParams.group_by || "day",
           top_n: parseInt(newReportParams.top_n || "10"),
         };
@@ -211,6 +215,10 @@ export default function AdminReportsPage() {
   };
 
   const saveCurrentReportAsConfig = async (type: ReportType, params: Record<string, unknown>) => {
+    if ((type === "SALES" || type === "PRODUCT_PERFORMANCE") && !validateDateRange(params.start_date as string | undefined, params.end_date as string | undefined)) {
+      return;
+    }
+
     const name = prompt("Enter a name for this saved report:");
     if (!name) return;
 
@@ -230,9 +238,22 @@ export default function AdminReportsPage() {
     }
   };
 
-  const generateSalesReport = async () => {
-    if (!salesStartDate || !salesEndDate) {
+  const validateDateRange = (startDate?: string, endDate?: string) => {
+    if (!startDate || !endDate) {
       toast.error("Please select start and end dates");
+      return false;
+    }
+
+    if (new Date(startDate) >= new Date(endDate)) {
+      toast.error("Start date must be earlier than end date");
+      return false;
+    }
+
+    return true;
+  };
+
+  const generateSalesReport = async () => {
+    if (!validateDateRange(salesStartDate, salesEndDate)) {
       return;
     }
 
@@ -274,8 +295,7 @@ export default function AdminReportsPage() {
   };
 
   const generatePerformanceReport = async () => {
-    if (!perfStartDate || !perfEndDate) {
-      toast.error("Please select start and end dates");
+    if (!validateDateRange(perfStartDate, perfEndDate)) {
       return;
     }
 
@@ -426,12 +446,22 @@ export default function AdminReportsPage() {
                     {(newReportType === "SALES" || newReportType === "PRODUCT_PERFORMANCE") && (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium mb-2 block">Start Date</label>
-                          <Input type="date" value={newReportParams.start_date || ""} onChange={(e) => setNewReportParams({ ...newReportParams, start_date: e.target.value })} />
+                          <label className="text-sm font-medium mb-2 block">Start Date *</label>
+                          <Input
+                            type="date"
+                            value={newReportParams.start_date || ""}
+                            max={newReportParams.end_date || undefined}
+                            onChange={(e) => setNewReportParams({ ...newReportParams, start_date: e.target.value })}
+                          />
                         </div>
                         <div>
-                          <label className="text-sm font-medium mb-2 block">End Date</label>
-                          <Input type="date" value={newReportParams.end_date || ""} onChange={(e) => setNewReportParams({ ...newReportParams, end_date: e.target.value })} />
+                          <label className="text-sm font-medium mb-2 block">End Date *</label>
+                          <Input
+                            type="date"
+                            value={newReportParams.end_date || ""}
+                            min={newReportParams.start_date || undefined}
+                            onChange={(e) => setNewReportParams({ ...newReportParams, end_date: e.target.value })}
+                          />
                         </div>
                       </div>
                     )}
@@ -561,11 +591,11 @@ export default function AdminReportsPage() {
                 <div className="flex flex-wrap items-end gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Start Date</label>
-                    <Input type="date" value={salesStartDate} onChange={(e) => setSalesStartDate(e.target.value)} className="w-40" />
+                    <Input type="date" value={salesStartDate} max={salesEndDate || undefined} onChange={(e) => setSalesStartDate(e.target.value)} className="w-40" />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">End Date</label>
-                    <Input type="date" value={salesEndDate} onChange={(e) => setSalesEndDate(e.target.value)} className="w-40" />
+                    <Input type="date" value={salesEndDate} min={salesStartDate || undefined} onChange={(e) => setSalesEndDate(e.target.value)} className="w-40" />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Group By</label>
@@ -634,11 +664,11 @@ export default function AdminReportsPage() {
                 <div className="flex flex-wrap items-end gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Start Date</label>
-                    <Input type="date" value={perfStartDate} onChange={(e) => setPerfStartDate(e.target.value)} className="w-40" />
+                    <Input type="date" value={perfStartDate} max={perfEndDate || undefined} onChange={(e) => setPerfStartDate(e.target.value)} className="w-40" />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">End Date</label>
-                    <Input type="date" value={perfEndDate} onChange={(e) => setPerfEndDate(e.target.value)} className="w-40" />
+                    <Input type="date" value={perfEndDate} min={perfStartDate || undefined} onChange={(e) => setPerfEndDate(e.target.value)} className="w-40" />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Top N Products</label>
