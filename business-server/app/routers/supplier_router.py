@@ -14,6 +14,7 @@ from app.schemas.supplier_schema import (
     SupplierDetailResponse,
 )
 from app.security.jwt import verify_clerk_token, require_admin
+
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
 # Initialize service
@@ -31,7 +32,7 @@ async def create_supplier(
     supplier_data: SupplierCreate,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Create a new supplier.
@@ -69,7 +70,7 @@ async def get_supplier(
     supplier_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Get a supplier by its ID.
@@ -99,7 +100,7 @@ async def get_supplier_detail(
     supplier_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Get a supplier with detailed product information.
@@ -133,8 +134,8 @@ async def get_all_suppliers(
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     include_inactive: bool = Query(False, description="Include inactive suppliers"),
     session: AsyncSession = Depends(get_async_session),
-    user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    # user_data: dict = Depends(verify_clerk_token),
+    # _admin_data: dict = Depends(require_admin),
 ):
     """
     Get all suppliers with pagination.
@@ -144,7 +145,7 @@ async def get_all_suppliers(
     - **include_inactive**: Include inactive suppliers (default: false)
     """
     return await supplier_service.get_all_suppliers(
-        session, skip, limit, include_inactive, user_id=user_data.get("sub")
+        session, skip, limit, include_inactive, user_id=None
     )
 
 
@@ -159,7 +160,7 @@ async def update_supplier(
     update_data: SupplierUpdate,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Update a supplier.
@@ -195,7 +196,7 @@ async def delete_supplier(
     hard: bool = Query(False, description="Perform hard delete instead of soft delete"),
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Delete a supplier.
@@ -233,7 +234,7 @@ async def filter_suppliers(
     filter_params: SupplierFilterParams,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Filter suppliers based on criteria.
@@ -260,7 +261,7 @@ async def search_suppliers(
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Search suppliers by name, email, or contact person.
@@ -285,7 +286,7 @@ async def link_product_to_supplier(
     link_data: SupplierProductLink,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Link a product to a supplier.
@@ -321,7 +322,7 @@ async def unlink_product_from_supplier(
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
     user_data: dict = Depends(verify_clerk_token),
-    _admin_data: dict = Depends(require_admin)
+    _admin_data: dict = Depends(require_admin),
 ):
     """
     Unlink a product from a supplier.

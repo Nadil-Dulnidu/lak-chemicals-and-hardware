@@ -399,7 +399,7 @@ class OrderService:
     # ──────────────────────────────────────────────────────────────────────
 
     async def delete_order(
-        self, session: AsyncSession, order_id: int, user_id: str
+        self, session: AsyncSession, order_id: int, user_id: str, is_admin: bool = False
     ) -> bool:
         """Delete an order (user-scoped, only PENDING/CANCELLED)."""
         try:
@@ -407,7 +407,7 @@ class OrderService:
             if not order:
                 return False
 
-            if order.user_id != user_id:
+            if not is_admin and order.user_id != user_id:
                 self._logger.warning(
                     f"Unauthorized delete attempt on order {order_id} by {user_id}",
                     extra=create_owasp_log_context(

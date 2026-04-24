@@ -40,7 +40,7 @@ import type {
 export const productActions = {
   getAll: (skip = 0, limit = 100, includeInactive = false) =>
     apiClient<ProductListResponse>(
-      `/products?skip=${skip}&limit=${limit}&include_inactive=${includeInactive}`,
+      `/products/?skip=${skip}&limit=${limit}&include_inactive=${includeInactive}`,
     ),
 
   getById: (id: string) => apiClient<Product>(`/products/${id}`),
@@ -419,7 +419,7 @@ export const reportActions = {
 // ============= Supplier Actions =============
 export const supplierActions = {
   getAll: (skip = 0, limit = 100, token?: string | null) =>
-    apiClient<SupplierListResponse>(`/suppliers?skip=${skip}&limit=${limit}`, { token }),
+    apiClient<SupplierListResponse>(`/suppliers/?skip=${skip}&limit=${limit}`, { token }),
 
   getById: (id: string, token?: string | null) => apiClient<Supplier>(`/suppliers/${id}`, { token }),
 

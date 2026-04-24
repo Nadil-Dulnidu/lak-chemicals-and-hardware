@@ -561,7 +561,7 @@ export default function AdminReportsPage() {
                     Clear Results
                   </Button>
                 </div>
-                <DownloadableReport fileName={`Report-${runReportType}`} data={runReportData} reportType={runReportType}>
+                <DownloadableReport fileName={`Report-${runReportType}`} data={runReportData as Record<string, unknown>} reportType={runReportType}>
                   <ReportDisplay reportType={runReportType} data={runReportData as Record<string, unknown>} />
                 </DownloadableReport>
               </div>
@@ -619,7 +619,7 @@ export default function AdminReportsPage() {
             </Card>
 
             {salesReport && (
-              <DownloadableReport fileName="Sales-Report" data={salesReport} reportType="SALES">
+              <DownloadableReport fileName="Sales-Report" data={salesReport as unknown as Record<string, unknown>} reportType="SALES">
                 <SalesReportDisplay data={salesReport} />
               </DownloadableReport>
             )}
@@ -648,7 +648,7 @@ export default function AdminReportsPage() {
             </Card>
 
             {inventoryReport && (
-              <DownloadableReport fileName="Inventory-Report" data={inventoryReport} reportType="INVENTORY">
+              <DownloadableReport fileName="Inventory-Report" data={inventoryReport as unknown as Record<string, unknown>} reportType="INVENTORY">
                 <InventoryReportDisplay data={inventoryReport} />
               </DownloadableReport>
             )}

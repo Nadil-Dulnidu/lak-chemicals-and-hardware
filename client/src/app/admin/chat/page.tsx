@@ -293,7 +293,7 @@ function AdminChatApp() {
               <div className="flex justify-end mb-2 shrink-0">
                 <Button variant="ghost" size="sm" onClick={handleClearChat} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 transition-colors">
                   <Trash2 className="h-3.5 w-3.5" />
-                  New Chat
+                  Clear chat
                 </Button>
               </div>
             )}
@@ -318,7 +318,7 @@ function AdminChatApp() {
                       </Badge>
                       <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-orange-400">Analytics Assistant</h1>
                       <p className="text-muted-foreground text-base leading-relaxed">
-                        Ask about sales predictions, revenue trends, product performance, and inventory health — get instant analytics insights without running reports.
+                        Ask about sales predictions, revenue trends, product performance, and inventory health to get instant analytics insights without running reports.
                       </p>
                     </div>
 

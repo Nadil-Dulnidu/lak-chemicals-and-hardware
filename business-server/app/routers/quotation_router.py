@@ -328,7 +328,7 @@ async def delete_quotation(
     """
     user_id = user_data.get("sub")
 
-    success = await quotation_service.delete_quotation(session, quotation_id, user_id)
+    success = await quotation_service.delete_quotation(session, quotation_id, user_id, is_admin=True)
 
     if not success:
         raise HTTPException(

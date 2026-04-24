@@ -611,7 +611,7 @@ class QuotationService:
             )
 
     async def delete_quotation(
-        self, session: AsyncSession, quotation_id: int, user_id: str
+        self, session: AsyncSession, quotation_id: int, user_id: str, is_admin: bool = False
     ) -> bool:
         """
         Delete a quotation.
@@ -631,7 +631,7 @@ class QuotationService:
             if not quotation:
                 return False
 
-            if quotation.user_id != user_id:
+            if not is_admin and quotation.user_id != user_id:
                 self._logger.warning(
                     f"Unauthorized delete attempt on quotation {quotation_id} by user {user_id}",
                     extra=create_owasp_log_context(
