@@ -281,7 +281,7 @@ async def delete_order(
     try:
         user_id = user_data.get("sub")
 
-        success = await order_service.delete_order(session, order_id, user_id)
+        success = await order_service.delete_order(session, order_id, user_id, is_admin=True)
 
         if not success:
             raise HTTPException(

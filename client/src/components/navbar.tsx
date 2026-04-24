@@ -16,6 +16,7 @@ const customerNavItems = [
   { href: "/cart", label: "Cart", icon: ShoppingCart },
   { href: "/quotations", label: "My Quotations", icon: FileText },
   { href: "/orders", label: "My Orders", icon: ClipboardList },
+  { href: "/chat", label: "AI Assistant", icon: MessageSquareText },
 ];
 
 const adminNavItems = [

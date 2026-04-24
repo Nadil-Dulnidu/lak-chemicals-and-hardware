@@ -183,7 +183,7 @@ export const inventoryActions = {
 // ============= Quotation Actions =============
 export const quotationActions = {
   getAll: (skip = 0, limit = 100, token?: string | null) =>
-    apiClient<QuotationListResponse>(`/quotations/?skip=${skip}&limit=${limit}`, { token }),
+    apiClient<QuotationListResponse>(`/quotations?skip=${skip}&limit=${limit}`, { token }),
 
   getById: (id: number, token?: string | null) => apiClient<Quotation>(`/quotations/${id}`, { token }),
 
@@ -191,7 +191,7 @@ export const quotationActions = {
     apiClient<QuotationListResponse>(`/quotations/user/${userId}?skip=${skip}&limit=${limit}`, { token }),
 
   create: (data: QuotationCreate, token?: string | null) =>
-    apiClient<Quotation>("/quotations/", {
+    apiClient<Quotation>("/quotations", {
       method: "POST",
       body: JSON.stringify(data),
       token,
@@ -242,7 +242,7 @@ export const quotationActions = {
 // ============= Order Actions =============
 export const orderActions = {
   getAll: (skip = 0, limit = 100, token?: string | null) =>
-    apiClient<OrderListResponse>(`/orders/?skip=${skip}&limit=${limit}`, { token }),
+    apiClient<OrderListResponse>(`/orders?skip=${skip}&limit=${limit}`, { token }),
 
   getById: (id: number, token?: string | null) => apiClient<Order>(`/orders/${id}`, { token }),
 
@@ -373,7 +373,7 @@ export const reportActions = {
 
   // Get all saved report configurations
   getAll: (skip = 0, limit = 100, token?: string | null) =>
-    apiClient<ReportConfigListResponse>(`/reports/?skip=${skip}&limit=${limit}`, { token }),
+    apiClient<ReportConfigListResponse>(`/reports?skip=${skip}&limit=${limit}`, { token }),
 
   // Get a single report configuration by ID
   getById: (id: number, token?: string | null) => apiClient<ReportConfig>(`/reports/${id}`, { token }),

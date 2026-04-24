@@ -49,10 +49,10 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
             <div>
               <h4 className="font-semibold mb-4 text-foreground">Contact</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>123 Hardware Street</li>
-                <li>Colombo, Sri Lanka</li>
-                <li>+94 11 234 5678</li>
-                <li>info@lakhardware.lk</li>
+                <li>No 10</li>
+                <li>Dambulla Road, Naula</li>
+                <li>+94 66 227 1017</li>
+                <li>lakchemicalsandhardware@gmail.com</li>
               </ul>
             </div>
           </div>
