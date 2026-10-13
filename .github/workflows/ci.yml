@@ -1,15 +1,9 @@
 name: Continuous Integration & Testing
 
 on:
-  push:
-    branches:
-      - main
-      - v2
-      - 'feature/**'
   pull_request:
     branches:
       - main
-      - v2
 
 jobs:
   test-business-server:
