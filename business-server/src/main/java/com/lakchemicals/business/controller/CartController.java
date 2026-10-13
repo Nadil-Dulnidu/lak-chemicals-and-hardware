@@ -30,31 +30,31 @@ public class CartController {
         return ResponseEntity.status(HttpStatus.CREATED).body(cartService.addItemToCart(userId, request));
     }
 
-    @GetMapping
+    @GetMapping({"", "/", "/items"})
     @Operation(summary = "Get the current user's cart")
     public ResponseEntity<CartResponse> getCart() {
         String userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(cartService.getCart(userId));
     }
 
-    @PutMapping("/items/{product_id}")
-    @Operation(summary = "Update an item quantity in the cart")
+    @PutMapping("/items/{item_id}")
+    @Operation(summary = "Update an item quantity in the cart by item ID or product ID")
     public ResponseEntity<CartResponse> updateItem(
-            @PathVariable("product_id") UUID productId,
+            @PathVariable("item_id") String itemId,
             @Valid @RequestBody UpdateCartItemRequest request
     ) {
         String userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(cartService.updateItemQuantity(userId, productId, request.getQuantity()));
+        return ResponseEntity.ok(cartService.updateItemQuantityByIdentifier(userId, itemId, request.getQuantity()));
     }
 
-    @DeleteMapping("/items/{product_id}")
-    @Operation(summary = "Remove an item from the cart")
-    public ResponseEntity<CartResponse> removeItem(@PathVariable("product_id") UUID productId) {
+    @DeleteMapping("/items/{item_id}")
+    @Operation(summary = "Remove an item from the cart by item ID or product ID")
+    public ResponseEntity<CartResponse> removeItem(@PathVariable("item_id") String itemId) {
         String userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(cartService.removeItemFromCart(userId, productId));
+        return ResponseEntity.ok(cartService.removeItemFromCartByIdentifier(userId, itemId));
     }
 
-    @DeleteMapping
+    @DeleteMapping({"", "/"})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Clear all items from the cart")
     public ResponseEntity<Void> clearCart() {

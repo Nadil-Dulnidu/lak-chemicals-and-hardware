@@ -41,7 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
                         // Public Product Browsing
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**", "/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**", "/products/**", "/api/v1/products", "/products").permitAll()
 
                         // Agent tools endpoints (can be accessed via API Key or Admin)
                         .requestMatchers("/api/v1/tools/**", "/tools/**", "/api/v1/agents/**", "/agents/**")

@@ -11,7 +11,8 @@ export async function apiClient<T>(
   endpoint: string,
   options: ApiOptions = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const normalizedEndpoint = endpoint.replace(/^([^?]+?)\/+(?=\?|$)/, '$1');
+  const url = `${API_BASE_URL}${normalizedEndpoint}`;
   const { token, ...fetchOptions } = options;
 
   const headers: HeadersInit = {
@@ -48,7 +49,8 @@ export async function apiClientFormData<T>(
   method: string = "POST",
   headersOrOptions: HeadersInit | ApiOptions = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const normalizedEndpoint = endpoint.replace(/^([^?]+?)\/+(?=\?|$)/, '$1');
+  const url = `${API_BASE_URL}${normalizedEndpoint}`;
 
   let headers: HeadersInit = {};
   let token: string | null | undefined;

@@ -30,7 +30,7 @@ public class ProductController {
     private final ProductService productService;
     private final CloudStorageService cloudStorageService;
 
-    @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    @PostMapping(value = {"", "/"}, consumes = {MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_JSON_VALUE})
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Create a new product with optional image upload")
     public ResponseEntity<ProductResponse> createProduct(
@@ -121,7 +121,7 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     @Operation(summary = "Get all products with filtering and pagination")
     public ResponseEntity<ProductListResponse> getProducts(
             @RequestParam(value = "category", required = false) List<String> categories,
@@ -130,23 +130,59 @@ public class ProductController {
             @RequestParam(value = "max_price", required = false) Double maxPrice,
             @RequestParam(value = "min_stock", required = false) Integer minStock,
             @RequestParam(value = "max_stock", required = false) Integer maxStock,
-            @RequestParam(value = "is_active", required = false, defaultValue = "true") Boolean isActive,
+            @RequestParam(value = "is_active", required = false) Boolean isActive,
+            @RequestParam(value = "include_inactive", required = false) Boolean includeInactive,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "skip", required = false, defaultValue = "0") int skip,
             @RequestParam(value = "limit", required = false, defaultValue = "100") int limit
     ) {
+        Boolean effectiveIsActive = isActive;
+        if (effectiveIsActive == null) {
+            if (includeInactive != null && includeInactive) {
+                effectiveIsActive = null;
+            } else {
+                effectiveIsActive = true;
+            }
+        }
+
         List<ProductCategory> categoryEnums = null;
         if (categories != null && !categories.isEmpty()) {
             categoryEnums = categories.stream().map(ProductCategory::fromValue).toList();
         }
 
         ProductListResponse response = productService.filterProducts(
-                categoryEnums, brand, minPrice, maxPrice, minStock, maxStock, isActive, search, skip, limit
+                categoryEnums, brand, minPrice, maxPrice, minStock, maxStock, effectiveIsActive, search, skip, limit
         );
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/low-stock")
+    @GetMapping("/search/query")
+    @Operation(summary = "Search products by query")
+    public ResponseEntity<ProductListResponse> searchProducts(
+            @RequestParam("q") String query,
+            @RequestParam(value = "skip", required = false, defaultValue = "0") int skip,
+            @RequestParam(value = "limit", required = false, defaultValue = "100") int limit
+    ) {
+        return ResponseEntity.ok(productService.filterProducts(
+                null, null, null, null, null, null, true, query, skip, limit
+        ));
+    }
+
+    @GetMapping("/category/{category}")
+    @Operation(summary = "Get products by category")
+    public ResponseEntity<ProductListResponse> getProductsByCategory(
+            @PathVariable("category") String category,
+            @RequestParam(value = "skip", required = false, defaultValue = "0") int skip,
+            @RequestParam(value = "limit", required = false, defaultValue = "100") int limit
+    ) {
+        ProductCategory cat = ProductCategory.fromValue(category);
+        List<ProductCategory> categories = cat != null ? List.of(cat) : null;
+        return ResponseEntity.ok(productService.filterProducts(
+                categories, null, null, null, null, null, true, null, skip, limit
+        ));
+    }
+
+    @GetMapping({"/low-stock", "/alerts/low-stock"})
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Get low stock alerts")
     public ResponseEntity<List<LowStockAlert>> getLowStock(

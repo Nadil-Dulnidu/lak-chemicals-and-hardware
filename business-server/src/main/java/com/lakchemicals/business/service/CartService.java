@@ -62,27 +62,70 @@ public class CartService {
 
     @Transactional
     public CartResponse updateItemQuantity(String userId, UUID productId, int newQuantity) {
-        if (newQuantity <= 0) {
-            return removeItemFromCart(userId, productId);
+        return updateItemQuantityByIdentifier(userId, productId.toString(), newQuantity);
+    }
+
+    @Transactional
+    public CartResponse updateItemQuantityByIdentifier(String userId, String itemOrProductId, int newQuantity) {
+        Cart cart = getOrCreateCart(userId);
+        CartItem cartItem = null;
+
+        try {
+            int itemId = Integer.parseInt(itemOrProductId);
+            cartItem = cartItemRepository.findById(itemId)
+                    .filter(ci -> ci.getCart().getCartId().equals(cart.getCartId()))
+                    .orElse(null);
+        } catch (NumberFormatException ignored) {}
+
+        if (cartItem == null) {
+            try {
+                UUID prodId = UUID.fromString(itemOrProductId);
+                cartItem = cartItemRepository.findByCart_CartIdAndProduct_Id(cart.getCartId(), prodId).orElse(null);
+            } catch (IllegalArgumentException ignored) {}
         }
 
-        Cart cart = getOrCreateCart(userId);
+        if (cartItem == null) {
+            throw new ResourceNotFoundException("Item not found in cart for identifier: " + itemOrProductId);
+        }
 
-        CartItem cartItem = cartItemRepository.findByCart_CartIdAndProduct_Id(cart.getCartId(), productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Item not found in cart for product: " + productId));
-
-        cartItem.setQuantity(newQuantity);
-        cartItemRepository.save(cartItem);
+        if (newQuantity <= 0) {
+            cartItemRepository.delete(cartItem);
+            cart.getCartItems().remove(cartItem);
+        } else {
+            cartItem.setQuantity(newQuantity);
+            cartItemRepository.save(cartItem);
+        }
 
         return getCart(userId);
     }
 
     @Transactional
     public CartResponse removeItemFromCart(String userId, UUID productId) {
-        Cart cart = getOrCreateCart(userId);
+        return removeItemFromCartByIdentifier(userId, productId.toString());
+    }
 
-        CartItem cartItem = cartItemRepository.findByCart_CartIdAndProduct_Id(cart.getCartId(), productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Item not found in cart for product: " + productId));
+    @Transactional
+    public CartResponse removeItemFromCartByIdentifier(String userId, String itemOrProductId) {
+        Cart cart = getOrCreateCart(userId);
+        CartItem cartItem = null;
+
+        try {
+            int itemId = Integer.parseInt(itemOrProductId);
+            cartItem = cartItemRepository.findById(itemId)
+                    .filter(ci -> ci.getCart().getCartId().equals(cart.getCartId()))
+                    .orElse(null);
+        } catch (NumberFormatException ignored) {}
+
+        if (cartItem == null) {
+            try {
+                UUID prodId = UUID.fromString(itemOrProductId);
+                cartItem = cartItemRepository.findByCart_CartIdAndProduct_Id(cart.getCartId(), prodId).orElse(null);
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        if (cartItem == null) {
+            throw new ResourceNotFoundException("Item not found in cart for identifier: " + itemOrProductId);
+        }
 
         cartItemRepository.delete(cartItem);
         cart.getCartItems().remove(cartItem);

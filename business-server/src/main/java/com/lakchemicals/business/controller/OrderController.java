@@ -51,7 +51,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderById(id, userId, isAdmin));
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     @Operation(summary = "List orders (user's orders or all orders if admin)")
     public ResponseEntity<OrderListResponse> getOrders(
             @RequestParam(value = "status", required = false) String status,

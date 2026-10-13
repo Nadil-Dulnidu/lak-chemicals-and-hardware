@@ -24,7 +24,7 @@ public class ReportController {
 
     private final ReportService reportService;
 
-    @PostMapping
+    @PostMapping({"", "/"})
     @Operation(summary = "Save a report configuration")
     public ResponseEntity<ReportResponse> createReport(@Valid @RequestBody ReportCreateRequest request) {
         String userId = SecurityUtils.getCurrentUserId();
@@ -54,7 +54,7 @@ public class ReportController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     @Operation(summary = "List saved report configurations")
     public ResponseEntity<ReportListResponse> getReports(
             @RequestParam(value = "report_type", required = false) String reportType,

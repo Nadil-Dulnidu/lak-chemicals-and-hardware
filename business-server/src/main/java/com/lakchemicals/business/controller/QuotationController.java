@@ -26,7 +26,7 @@ public class QuotationController {
 
     private final QuotationService quotationService;
 
-    @PostMapping
+    @PostMapping({"", "/"})
     @Operation(summary = "Create a new quotation request")
     public ResponseEntity<QuotationResponse> createQuotation(@Valid @RequestBody QuotationCreateRequest request) {
         String userId = SecurityUtils.getCurrentUserId();
@@ -50,7 +50,7 @@ public class QuotationController {
         return ResponseEntity.ok(quotationService.getQuotationById(id, userId, isAdmin));
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     @Operation(summary = "List quotations (user's quotations or all quotations if admin)")
     public ResponseEntity<QuotationListResponse> getQuotations(
             @RequestParam(value = "status", required = false) String status,

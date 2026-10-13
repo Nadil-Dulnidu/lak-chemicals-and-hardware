@@ -25,7 +25,7 @@ public class SupplierController {
 
     private final SupplierService supplierService;
 
-    @PostMapping
+    @PostMapping({"", "/"})
     @Operation(summary = "Create a new supplier")
     public ResponseEntity<SupplierResponse> createSupplier(@Valid @RequestBody SupplierCreateRequest request) {
         String userId = SecurityUtils.getCurrentUserId();
@@ -59,15 +59,34 @@ public class SupplierController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     @Operation(summary = "Get all suppliers with pagination and filtering")
     public ResponseEntity<SupplierListResponse> getSuppliers(
-            @RequestParam(value = "is_active", required = false, defaultValue = "true") Boolean isActive,
+            @RequestParam(value = "is_active", required = false) Boolean isActive,
+            @RequestParam(value = "include_inactive", required = false) Boolean includeInactive,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "skip", required = false, defaultValue = "0") int skip,
             @RequestParam(value = "limit", required = false, defaultValue = "100") int limit
     ) {
-        return ResponseEntity.ok(supplierService.filterSuppliers(isActive, search, skip, limit));
+        Boolean effectiveIsActive = isActive;
+        if (effectiveIsActive == null) {
+            if (includeInactive != null && includeInactive) {
+                effectiveIsActive = null;
+            } else {
+                effectiveIsActive = true;
+            }
+        }
+        return ResponseEntity.ok(supplierService.filterSuppliers(effectiveIsActive, search, skip, limit));
+    }
+
+    @GetMapping("/search/query")
+    @Operation(summary = "Search suppliers by query")
+    public ResponseEntity<SupplierListResponse> searchSuppliers(
+            @RequestParam("q") String query,
+            @RequestParam(value = "skip", required = false, defaultValue = "0") int skip,
+            @RequestParam(value = "limit", required = false, defaultValue = "100") int limit
+    ) {
+        return ResponseEntity.ok(supplierService.filterSuppliers(true, query, skip, limit));
     }
 
     @PostMapping("/{id}/products")
@@ -92,7 +111,7 @@ public class SupplierController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}/details")
+    @GetMapping({"/{id}/details", "/{id}/detail"})
     @Operation(summary = "Get supplier details with products")
     public ResponseEntity<SupplierDetailResponse> getSupplierDetails(@PathVariable("id") UUID id) {
         String userId = SecurityUtils.getCurrentUserId();
