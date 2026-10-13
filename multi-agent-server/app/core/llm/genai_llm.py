@@ -1,17 +1,17 @@
 """
-Thread-safe Google GenAI model management with comprehensive error handling and validation.
+Thread-safe Google GenAI model management using langchain_google_genai configured for GCP Vertex AI.
 
 This module provides production-ready LLM model initialization with proper
 singleton pattern, validation, error handling, and logging.
 """
 
+import os
 import threading
 from typing import Optional
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-
 from app.configs.logging import get_logger
 from app.configs.config_loader import get_config_value
+from langchain_google_genai import ChatGoogleGenerativeAI
 from app.exceptions.llm_excaptions import LLMConfigurationError, LLMInitializationError
 
 # Configure module logger
@@ -20,11 +20,10 @@ logger = get_logger(__name__)
 
 class GenAIModelManager:
     """
-    Thread-safe singleton manager for Google GenAI models.
+    Thread-safe singleton manager for Google GenAI models via Vertex AI.
 
-    This class manages Google GenAI model instances with proper thread safety,
-    validation, and error handling. Supports multiple models with different
-    temperatures through a cache.
+    Manages ChatGoogleGenerativeAI model instances with thread safety,
+    validation, and caching.
     """
 
     _instance = None
@@ -44,25 +43,26 @@ class GenAIModelManager:
 
         with self._lock:
             if not self._initialized:
-                self._models = {}  # Cache for models with different temperatures
+                self._models = {}
                 self._initialized = True
-                logger.info("GenAIModelManager initialized")
+                logger.info("GenAIModelManager initialized (Vertex AI mode)")
 
     def _load_config(self) -> dict:
         """
-        Load and validate Google GenAI configuration from config.json.
+        Load and validate configuration from config.json.
 
         Returns:
-            dict with keys: api_key, model_name, temperature, max_tokens
-
-        Raises:
-            LLMConfigurationError: If required settings are missing or invalid
+            dict with keys: api_key, model_name, temperature, max_tokens, vertexai, project, location
         """
         try:
-            logger.info("Loading Google GenAI settings from config")
-            api_key: str = get_config_value("genai", "api_key", default="")
+            logger.info("Loading Google GenAI settings from config for Vertex AI")
+            api_key: str = (
+                get_config_value("genai", "api_key", default="")
+                or os.getenv("VERTEX_API_KEY", "")
+                or os.getenv("GOOGLE_API_KEY", "")
+            )
             model_name: str = get_config_value(
-                "genai_normal", "model_name", default="gemini-2.0-flash"
+                "genai_normal", "model_name", default="gemini-2.5-flash"
             )
             temperature: float = float(
                 get_config_value("genai_normal", "temperature", default=0.0)
@@ -74,14 +74,29 @@ class GenAIModelManager:
                 int(max_tokens_raw) if max_tokens_raw is not None else None
             )
 
+            project_id: str = (
+                get_config_value("vertex_ai", "project", default="lak-chemicals")
+                or os.getenv("GCP_PROJECT_ID", "lak-chemicals")
+            )
+            location: str = (
+                get_config_value("vertex_ai", "location", default="asia-south1")
+                or os.getenv("GCP_REGION", "asia-south1")
+            )
+            vertexai: bool = bool(
+                get_config_value("vertex_ai", "vertexai", default=True)
+            )
+
             self._validate_config(api_key, model_name, temperature, max_tokens)
 
-            logger.info("Google GenAI settings loaded and validated")
+            logger.info("Google GenAI settings loaded and validated for Vertex AI")
             return {
                 "api_key": api_key,
                 "model_name": model_name,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
+                "project": project_id,
+                "location": location,
+                "vertexai": vertexai,
             }
         except LLMConfigurationError:
             raise
@@ -98,12 +113,9 @@ class GenAIModelManager:
     ) -> None:
         """
         Validate Google GenAI configuration values.
-
-        Raises:
-            LLMConfigurationError: If required settings are missing or invalid
         """
         if not api_key:
-            raise LLMConfigurationError("genai.api_key is not set in config.json")
+            raise LLMConfigurationError("genai.api_key is not set in config.json or environment")
 
         if not model_name:
             raise LLMConfigurationError(
@@ -134,31 +146,15 @@ class GenAIModelManager:
         streaming: bool = False,
     ) -> ChatGoogleGenerativeAI:
         """
-        Get or create a Google GenAI model instance.
-
-        Models are cached by their configuration (temperature, max_tokens, streaming).
-        This ensures consistent behaviour and avoids creating duplicate instances.
-
-        Args:
-            max_tokens: Override max output tokens (None = use config value or model default)
-            streaming: Whether to enable streaming responses
-
-        Returns:
-            Configured ChatGoogleGenerativeAI instance
-
-        Raises:
-            LLMConfigurationError: If configuration is invalid
-            LLMInitializationError: If model creation fails
+        Get or create a ChatGoogleGenerativeAI model instance configured for GCP Vertex AI.
         """
         config = self._load_config()
         temperature: float = config["temperature"]
 
-        # Caller-supplied max_tokens takes priority; fall back to config value
         resolved_max_tokens: Optional[int] = (
             max_tokens if max_tokens is not None else config["max_tokens"]
         )
 
-        # Create cache key based on full resolved configuration
         cache_key = (temperature, resolved_max_tokens, streaming)
 
         if cache_key not in self._models:
@@ -166,24 +162,22 @@ class GenAIModelManager:
                 if cache_key not in self._models:
                     try:
                         logger.info(
-                            f"Creating Google GenAI model (temp={temperature}, "
+                            f"Creating ChatGoogleGenerativeAI for Vertex AI (temp={temperature}, "
                             f"max_tokens={resolved_max_tokens}, streaming={streaming})"
                         )
 
-                        model_kwargs = {
-                            "model": config["model_name"],
-                            "api_key": config["api_key"],
-                            "temperature": temperature,
-                            "streaming": streaming,
-                            "vertexai": True,
-                        }
-
-                        if resolved_max_tokens is not None:
-                            model_kwargs["max_output_tokens"] = resolved_max_tokens
-
-                        self._models[cache_key] = ChatGoogleGenerativeAI(**model_kwargs)
+                        self._models[cache_key] = ChatGoogleGenerativeAI(
+                            model=config["model_name"],
+                            google_api_key=config["api_key"],
+                            temperature=temperature,
+                            streaming=streaming,
+                            max_output_tokens=resolved_max_tokens,
+                            vertexai=config["vertexai"],
+                            project=config["project"],
+                            location=config["location"],
+                        )
                         logger.info(
-                            f"Google GenAI model created successfully: {config['model_name']}"
+                            f"ChatGoogleGenerativeAI created successfully: {config['model_name']}"
                         )
                     except LLMConfigurationError:
                         raise
@@ -197,7 +191,7 @@ class GenAIModelManager:
 
     def reset(self) -> None:
         """
-        Reset all cached models. Useful for testing or configuration changes.
+        Reset all cached models.
         """
         with self._lock:
             logger.warning("Resetting all Google GenAI models")
@@ -207,9 +201,6 @@ class GenAIModelManager:
     def get_model_info(self) -> dict:
         """
         Get information about cached models.
-
-        Returns:
-            Dictionary with model statistics
         """
         with self._lock:
             model_name = get_config_value("genai_normal", "model_name", default=None)
@@ -231,31 +222,12 @@ class GenAIModelManager:
 _manager = GenAIModelManager()
 
 
-# Public API - Backward compatible
 def get_genai_model(
     max_tokens: Optional[int] = None,
     streaming: bool = True,
 ) -> ChatGoogleGenerativeAI:
     """
     Get a Google GenAI model instance (singleton per configuration).
-
-    This is the main public API for getting Google GenAI models. Models are cached
-    based on their configuration to ensure consistent behaviour.
-
-    Args:
-        max_tokens: Maximum tokens in response (None = model default)
-        streaming: Whether to enable streaming responses
-
-    Returns:
-        Configured ChatGoogleGenerativeAI instance
-
-    Raises:
-        LLMConfigurationError: If configuration is invalid
-        LLMInitializationError: If model creation fails
-
-    Example:
-        >>> model = get_genai_model()
-        >>> response = model.invoke("Hello, how are you?")
     """
     return _manager.get_model(max_tokens=max_tokens, streaming=streaming)
 
@@ -263,8 +235,6 @@ def get_genai_model(
 def reset_genai_models() -> None:
     """
     Reset all cached Google GenAI models.
-
-    Useful for testing or when configuration has changed.
     """
     _manager.reset()
 
@@ -272,33 +242,16 @@ def reset_genai_models() -> None:
 def get_genai_model_info() -> dict:
     """
     Get information about cached Google GenAI models.
-
-    Returns:
-        Dictionary containing model statistics and configuration info
     """
     return _manager.get_model_info()
 
 
-# Convenience function for generating responses
 def generate_genai_response(
     prompt: str,
     max_tokens: Optional[int] = None,
 ) -> str:
     """
     Generate a response using Google GenAI model.
-
-    This is a convenience function that handles model retrieval and invocation.
-
-    Args:
-        prompt: The input prompt
-        max_tokens: Maximum tokens in response
-
-    Returns:
-        Generated response text
-
-    Raises:
-        LLMConfigurationError: If configuration is invalid
-        LLMInitializationError: If model creation fails
     """
     try:
         model = get_genai_model(max_tokens=max_tokens)

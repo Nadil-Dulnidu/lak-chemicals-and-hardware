@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.configs.open_api_tags import openapi_tags
 from app.routers.chat_router import chat_router
+from app.routers.report_analysis_router import report_analysis_router
 from app.configs.logging import get_logger
 
 logger = get_logger(__name__)
@@ -16,12 +17,15 @@ app = FastAPI(
 
 origins = [
     "http://localhost:3000",
-    "https://lak-chemicals-and-hardware.vercel.app",  # production
+    "http://127.0.0.1:3000",
+    "https://lak-chemicals-and-hardware.vercel.app",
+    "https://lakchemicalsandhardware.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -78,5 +82,6 @@ async def health():
     return {"message": "IKMS is healthy"}
 
 
-# Include chat router
+# Include routers
 app.include_router(chat_router)
+app.include_router(report_analysis_router)

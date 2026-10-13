@@ -54,6 +54,26 @@ class ConfigLoader:
         if override_key in self._config_overrides:
             return self._config_overrides[override_key]
 
+        # Check environment variable mappings
+        env_map = {
+            ("business_server", "base_url"): ["BUSINESS_SERVER_BASE_URL", "BUSINESS_SERVER_URL"],
+            ("business_server", "api_key"): ["BUSINESS_SERVER_API_KEY", "AI_SERVICE_API_KEY", "API_KEY"],
+            ("server", "port"): ["PORT"],
+            ("server", "host"): ["HOST"],
+            ("genai", "api_key"): ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+            ("vertex_ai", "project"): ["GOOGLE_CLOUD_PROJECT", "VERTEXAI_PROJECT"],
+            ("vertex_ai", "location"): ["GOOGLE_CLOUD_LOCATION", "VERTEXAI_LOCATION"],
+        }
+        for env_var in env_map.get(keys, []):
+            val = os.getenv(env_var)
+            if val is not None and val != "":
+                if keys == ("server", "port"):
+                    try:
+                        return int(val)
+                    except ValueError:
+                        pass
+                return val
+
         value = self._config
         for key in keys:
             if isinstance(value, dict):

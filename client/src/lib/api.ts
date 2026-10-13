@@ -1,6 +1,6 @@
 // API Client for LAK Chemicals and Hardware
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
 interface ApiOptions extends RequestInit {
   token?: string | null;

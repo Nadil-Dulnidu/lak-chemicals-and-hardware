@@ -427,3 +427,19 @@ export interface ReportConfigListResponse {
 export interface ApiError {
   detail: string;
 }
+
+// ============= AI Report Types =============
+export interface AiReportAnalysis {
+  report_type: string;
+  summary: string;
+  insights: string[];
+  recommendations: string[];
+  risk_alerts: string[];
+}
+
+export interface AiGeneratedReport<T = unknown> {
+  report_type: string;
+  generated_at: string;
+  raw_data: T;
+  ai_analysis: AiReportAnalysis;
+}

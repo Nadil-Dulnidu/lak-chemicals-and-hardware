@@ -34,6 +34,7 @@ import type {
   StockMovementListResponse,
   InventoryLevel,
   StockAdjustment,
+  AiGeneratedReport,
 } from "./types";
 
 // ============= Product Actions =============
@@ -351,6 +352,18 @@ export const reportActions = {
 
   generateLowStock: (params?: { category?: string; threshold_percentage?: number }, token?: string | null) =>
     apiClient("/reports/generate/low-stock", {
+      method: "POST",
+      body: JSON.stringify(params || {}),
+      token,
+    }),
+
+  // ============= Autonomous AI Report Generation (Gemini 2.5 Pro) =============
+  generateAiReport: <T = unknown>(
+    type: "sales" | "inventory" | "product-performance" | "low-stock" | "sales-prediction",
+    params?: Record<string, unknown>,
+    token?: string | null
+  ) =>
+    apiClient<AiGeneratedReport<T>>(`/reports/generate/ai/${type}`, {
       method: "POST",
       body: JSON.stringify(params || {}),
       token,

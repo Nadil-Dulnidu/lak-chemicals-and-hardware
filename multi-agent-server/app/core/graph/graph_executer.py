@@ -9,12 +9,6 @@ from app.core.agents.agents import (
     get_product_intelligence_agent,
     get_product_suggestion_agent,
     get_add_to_cart_agent,
-    get_analytics_quiry_validation_agent,
-    get_analytics_router_agent,
-    get_inventory_analytics_agent,
-    get_product_performance_agent,
-    get_sales_analytics_agent,
-    get_sales_prediction_agent,
 )
 from app.core.graph.state import GraphState
 from app.core.graph.graph_builder import GraphBuilder
@@ -81,12 +75,6 @@ class GraphExecuter:
         product_intelligence_agent = get_product_intelligence_agent()
         product_suggestion_agent = get_product_suggestion_agent()
         add_to_cart_agent = get_add_to_cart_agent()
-        analytics_query_validation_agent = get_analytics_quiry_validation_agent()
-        analytics_router_agent = get_analytics_router_agent()
-        inventory_analytics_agent = get_inventory_analytics_agent()
-        product_performance_agent = get_product_performance_agent()
-        sales_analytics_agent = get_sales_analytics_agent()
-        sales_prediction_agent = get_sales_prediction_agent()
         checkpointer = checkpointer or InMemorySaver()
 
         # Build the graph
@@ -96,12 +84,6 @@ class GraphExecuter:
             product_suggestion_agent=product_suggestion_agent,
             user_confirmation_agent=user_confirmation_agent,
             add_to_cart_agent=add_to_cart_agent,
-            analytics_query_validation_agent=analytics_query_validation_agent,
-            analytics_router_agent=analytics_router_agent,
-            inventory_analytics_agent=inventory_analytics_agent,
-            product_performance_agent=product_performance_agent,
-            sales_analytics_agent=sales_analytics_agent,
-            sales_prediction_agent=sales_prediction_agent,
             checkpointer=checkpointer,
         )
 

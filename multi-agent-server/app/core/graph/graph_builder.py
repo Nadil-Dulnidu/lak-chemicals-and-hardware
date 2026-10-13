@@ -1,14 +1,12 @@
-from app.configs.logging import get_logger
 from typing import Optional, Any, Dict
-
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from app.configs.logging import get_logger
 from app.core.observability.langfuse_tracing import (
     langfuse,
     sanitize_state,
-    _coerce_dict,
 )
 from app.core.graph.state import GraphState
 from app.core.graph.nodes import (
@@ -19,37 +17,23 @@ from app.core.graph.nodes import (
     UserConfirmationNode,
     AddToCartGatewayNode,
     AddToCartNode,
-    AnalyticsQueryValidationNode,
-    AnalyticsRouterNode,
-    InventoryAnalyticsNode,
-    ProductPerformanceNode,
-    SalesAnalyticsNode,
-    SalesPredictionNode,
     UserApologiseEndNode,
 )
-
-from app.core.agents.constants import (
-    AnalyticsRouterAgentEnum,
-    ProductRetrievalSuggestionAgentEnum,
-)
+from app.core.agents.constants import ProductRetrievalSuggestionAgentEnum
 
 logger = get_logger(__name__)
 
 
 class GraphBuilder:
     """
-    Builds and compiles the workflow graph.
+    Builds and compiles the customer conversational workflow graph.
 
-    This class is responsible for:
-    1. Creating node instances with their dependencies
-    2. Adding nodes to the graph
-    3. Defining edges and conditional routing
-    4. Compiling the graph with checkpointing
-
-    Attributes:
-        state_graph (StateGraph): The underlying LangGraph state graph.
-        checkpointer (BaseCheckpointSaver): Checkpointer for conversation persistence.
-        nodes (dict): Dictionary of initialized node instances.
+    This graph handles:
+    1. Customer product requirement clarification
+    2. Product intelligence and stock lookup
+    3. Product suggestion and alternatives
+    4. User confirmation for ordering/cart additions
+    5. Adding items to cart
     """
 
     def __init__(
@@ -59,53 +43,30 @@ class GraphBuilder:
         product_suggestion_agent,
         user_confirmation_agent,
         add_to_cart_agent,
-        analytics_query_validation_agent,
-        analytics_router_agent,
-        inventory_analytics_agent,
-        product_performance_agent,
-        sales_analytics_agent,
-        sales_prediction_agent,
         checkpointer: Optional[BaseCheckpointSaver] = None,
     ):
-        """
-        Initialize the graph builder.
-
-        Args:
-            clarification_validation_agent: The agent for clarification validation.
-            checkpointer: Optional checkpointer for state persistence.
-                         Defaults to InMemorySaver if not provided.
-        """
         self.state_graph = StateGraph(GraphState)
         self.checkpointer = checkpointer or InMemorySaver()
 
-        # Initialize nodes with their dependencies
+        # Initialize nodes with their dependencies (customer flow only)
         self.nodes = {
             "clarification_validation": ClarificationValidationNode(
                 clarification_validation_agent
             ),
             "ask_interrupt_questions_for_user_clarification_confirmation": AskInterruptQuestionsNode(),
-            "ask_interrupt_questions_for_analytics_inquiry_confirmation": AskInterruptQuestionsNode(),
-            "ask_interrupt_questions_for_add_to_cart_confirmation": AskInterruptQuestionsNode(),
             "product_intelligence": ProductIntelligenceAgentNode(
                 product_intelligence_agent
             ),
             "product_suggestion": ProductSuggestionAgentNode(product_suggestion_agent),
             "user_confirmation": UserConfirmationNode(user_confirmation_agent),
+            "ask_interrupt_questions_for_add_to_cart_confirmation": AskInterruptQuestionsNode(),
             "add_to_cart_gateway": AddToCartGatewayNode(),
             "add_to_cart": AddToCartNode(add_to_cart_agent),
-            "analytics_query_validation": AnalyticsQueryValidationNode(
-                analytics_query_validation_agent
-            ),
-            "analytics_router": AnalyticsRouterNode(analytics_router_agent),
-            "inventory_analytics": InventoryAnalyticsNode(inventory_analytics_agent),
-            "product_performance": ProductPerformanceNode(product_performance_agent),
-            "sales_analytics": SalesAnalyticsNode(sales_analytics_agent),
-            "sales_prediction": SalesPredictionNode(sales_prediction_agent),
             "user_apologise_end": UserApologiseEndNode(),
         }
 
         logger.info(
-            "GraphBuilder initialized with nodes: %s",
+            "GraphBuilder initialized with customer workflow nodes: %s",
             list(self.nodes.keys()),
         )
 
@@ -125,7 +86,6 @@ class GraphBuilder:
                     span.update(input={"state": sanitize_state(state)})
 
                     metadata: Dict[str, Any] = {
-                        "is_admin": state.get("is_admin"),
                         "clarification_done": state.get(
                             "clarification_validation_completed"
                         ),
@@ -134,14 +94,6 @@ class GraphBuilder:
                         ),
                         "should_add_to_cart": state.get("should_execute_add_to_cart"),
                     }
-
-                    if _node_name == "analytics_router":
-                        analytics_router_response = _coerce_dict(
-                            state.get("analytics_router_response")
-                        )
-                        route_decision = analytics_router_response.get("query_type")
-                        if route_decision is not None:
-                            metadata["route_decision"] = route_decision
 
                     if _node_name in {"add_to_cart_gateway", "user_confirmation"}:
                         if state.get("should_execute_add_to_cart") is not None:
@@ -169,18 +121,9 @@ class GraphBuilder:
             logger.debug(f"Added node: {node_name}")
 
     def _add_edges(self) -> None:
-        """
-        Define edges and transitions between nodes.
-
-        """
-        self.state_graph.add_conditional_edges(
-            START,
-            self._cheack_is_admin,
-            {
-                True: "analytics_query_validation",
-                False: "clarification_validation",
-            },
-        )
+        """Define customer flow edges and transitions between nodes."""
+        # Direct entry from START to customer clarification
+        self.state_graph.add_edge(START, "clarification_validation")
 
         self.state_graph.add_conditional_edges(
             "clarification_validation",
@@ -232,160 +175,31 @@ class GraphBuilder:
         )
 
         self.state_graph.add_edge("add_to_cart", END)
-
-        self.state_graph.add_conditional_edges(
-            "analytics_query_validation",
-            self._should_ask_analytics_inquiry_validation,
-            {
-                True: "ask_interrupt_questions_for_analytics_inquiry_confirmation",
-                False: "analytics_router",
-            },
-        )
-
-        self.state_graph.add_edge(
-            "ask_interrupt_questions_for_analytics_inquiry_confirmation",
-            "analytics_query_validation",
-        )
-
-        self.state_graph.add_conditional_edges(
-            "analytics_router",
-            self._check_admin_query,
-            {
-                AnalyticsRouterAgentEnum.INVENTORY_ANALYSIS: "inventory_analytics",
-                AnalyticsRouterAgentEnum.PRODUCT_PERFORMANCE: "product_performance",
-                AnalyticsRouterAgentEnum.SALES_ANALYSIS: "sales_analytics",
-                AnalyticsRouterAgentEnum.SALES_PREDICTION: "sales_prediction",
-            },
-        )
-
-        self.state_graph.add_edge("inventory_analytics", END)
-        self.state_graph.add_edge("product_performance", END)
-        self.state_graph.add_edge("sales_analytics", END)
-        self.state_graph.add_edge("sales_prediction", END)
-
-        logger.debug("Graph edges configured")
+        logger.debug("Customer workflow graph edges configured")
 
     def _should_ask_more_questions(self, state: GraphState) -> bool:
-        """
-        Determine if we need to ask for more information.
-
-        This is a routing function used in conditional edges.
-
-        Args:
-            state: Current state of the workflow.
-
-        Returns:
-            True if more questions are needed, False otherwise.
-        """
         needs_more_questions = not state.get("clarification_validation_completed")
         logger.debug(f"Should ask more questions: {needs_more_questions}")
         return needs_more_questions
 
     def _should_ask_user_clarification(self, state: GraphState) -> bool:
-        """
-        Determine if we need to ask for user clarification.
-
-        This is a routing function used in conditional edges.
-
-        Args:
-            state: Current state of the workflow.
-
-        Returns:
-            True if user clarification is needed, False otherwise.
-        """
         needs_user_clarification = not state.get("user_confirmation_completed", False)
         logger.debug(f"Should ask user clarification: {needs_user_clarification}")
         return needs_user_clarification
 
     def _should_execute_add_to_cart(self, state: GraphState) -> bool:
-        """
-        Determine if we need to execute add to cart.
-
-        This is a routing function used in conditional edges.
-
-        Args:
-            state: Current state of the workflow.
-
-        Returns:
-            True if add to cart should be executed, False otherwise.
-        """
         should_execute_add_to_cart = state.get("should_execute_add_to_cart", False)
         logger.debug(f"Should execute add to cart: {should_execute_add_to_cart}")
         return should_execute_add_to_cart
 
-    def _should_ask_analytics_inquiry_validation(self, state: GraphState) -> bool:
-        """
-        Determine if we need to ask for analytics inquiry validation.
-
-        This is a routing function used in conditional edges.
-
-        Args:
-            state: Current state of the workflow.
-
-        Returns:
-            True if analytics inquiry validation is needed, False otherwise.
-        """
-        needs_analytics_inquiry_validation = not state.get(
-            "analytics_inquiry_validation_completed", False
-        )
-        logger.debug(
-            f"Should ask analytics inquiry validation: {needs_analytics_inquiry_validation}"
-        )
-        return needs_analytics_inquiry_validation
-
-    def _cheack_is_admin(self, state: GraphState) -> bool:
-        """
-        Determine if the user is an admin.
-
-        This is a routing function used in conditional edges.
-
-        Args:
-            state: Current state of the workflow.
-
-        Returns:
-            True if the user is an admin, False otherwise.
-        """
-        is_admin = state.get("is_admin", False)
-        logger.debug(f"Is admin: {is_admin}")
-        return is_admin
-
-    def _check_admin_query(self, state: GraphState) -> AnalyticsRouterAgentEnum:
-        """
-        Determine if the user query is an admin query.
-
-        This is a routing function used in conditional edges.
-
-        Args:
-            state: Current state of the workflow.
-
-        Returns:
-            True if the user query is an admin query, False otherwise.
-        """
-        analytics_router_response = state["analytics_router_response"]
-        admin_query = analytics_router_response.get("query_type", None)
-        logger.debug(f"Is admin query: {admin_query}")
-        return admin_query
-
     def _check_suggest_product_available(self, state: GraphState) -> bool:
-        """
-        Determine if the suggested product is available.
+        suggestion_resp = state.get("product_suggestion_response")
+        if not suggestion_resp:
+            logger.debug("Suggested product response is missing")
+            return False
 
-        This is a routing function used in conditional edges.
-
-        Args:
-            state: Current state of the workflow.
-
-        Returns:
-            True if the suggested product is available, False otherwise.
-        """
-        suggest_product_available = state["product_suggestion_response"].get(
-            "availability_status", None
-        )
-
-        print(f"suggest_product_available: {suggest_product_available}")
-
+        suggest_product_available = suggestion_resp.get("availability_status", None)
         if not suggest_product_available:
-            logger.debug("Suggested product availability is not available")
             return False
 
         if (
@@ -393,30 +207,14 @@ class GraphBuilder:
             or suggest_product_available
             == ProductRetrievalSuggestionAgentEnum.ALTERNATIVE_AVAILABLE
         ):
-            logger.debug("Suggested product is available")
             return True
-        else:
-            logger.debug("Suggested product is not available")
-            return False
+        return False
 
     def build(self) -> StateGraph:
-        """
-        Build and compile the complete graph.
-
-        This method:
-        1. Adds all nodes to the graph
-        2. Defines edges and routing logic
-        3. Compiles the graph with checkpointing
-
-        Returns:
-            The compiled StateGraph ready for execution.
-        """
-        logger.info("Building graph...")
-
+        """Build and compile the customer workflow graph."""
+        logger.info("Building customer flow graph...")
         self._add_nodes()
         self._add_edges()
-
         compiled_graph = self.state_graph.compile(checkpointer=self.checkpointer)
-
-        logger.info("Graph built successfully")
+        logger.info("Customer flow graph built successfully")
         return compiled_graph

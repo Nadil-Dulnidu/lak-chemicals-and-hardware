@@ -1,0 +1,39 @@
+# ==============================================================================
+# Lak Chemicals and Hardware — GCP Infrastructure Configuration Example
+# Copy this file to terraform.tfvars and fill in your values.
+# DO NOT commit terraform.tfvars to version control!
+# ==============================================================================
+
+# Core Project Configuration
+project_id   = "your-gcp-project-id"
+project_name = "lak-chemicals"
+environment  = "prod"
+region       = "asia-south1"
+github_repo  = "Nadil-Dulnidu/lak-chemicals-and-hardware"
+
+# Database & Cost Optimization
+db_tier              = "db-f1-micro"
+db_activation_policy = "ALWAYS"
+deletion_protection  = false
+
+# Clerk Identity & Authentication
+clerk_publishable_key        = "pk_test_..."
+clerk_secret_key             = "sk_test_..."
+clerk_webhook_signing_secret = "whsec_..."
+
+# Inter-Service API Key
+ai_service_api_key = "lak_secret_api_key_here"
+
+# External Integrations
+stripe_secret_key = "sk_test_..."
+genai_api_key     = "AIzaSy..."
+
+# Cloud Run Scaling (0 allows scale-to-zero when idle)
+business_min_instances = 0
+ai_min_instances       = 0
+web_min_instances      = 0
+
+# Gemini Models for Multi-Agent AI
+gemini_model       = "gemini-2.5-flash"
+gemini_flash_model = "gemini-2.5-flash"
+gemini_pro_model   = "gemini-2.5-pro"
