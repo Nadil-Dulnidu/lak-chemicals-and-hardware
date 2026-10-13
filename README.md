@@ -1,14 +1,4 @@
-# 🛠️ Lak Chemicals and Hardware - AI Powered Hardware Store Management System
-
-[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016%20%7C%20React%2019-black?logo=next.js)](https://nextjs.org/)
-[![Spring Boot](https://img.shields.io/badge/Business%20Server-Spring%20Boot%203.4%20%7C%20Java%2021-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
-[![FastAPI](https://img.shields.io/badge/AI%20Microservice-FastAPI%20%7C%20Python%203.11-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
-[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph%20%7C%20LangChain-1C3C3C?logo=langchain)](https://langchain-ai.github.io/langgraph/)
-[![Google Cloud Vertex AI](https://img.shields.io/badge/AI%20Models-Gemini%202.5%20Flash%20%26%20Pro-4285F4?logo=googlecloud)](https://cloud.google.com/vertex-ai)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2016-336791?logo=postgresql)](https://www.postgresql.org/)
-[![Terraform](https://img.shields.io/badge/IaC-Terraform%20%7C%20GCP%20Cloud%20Run-7B42BC?logo=terraform)](https://www.terraform.io/)
-[![Clerk](https://img.shields.io/badge/Auth-Clerk%20JWKS%20RBAC-6C47FF?logo=clerk)](https://clerk.com/)
-[![Stripe](https://img.shields.io/badge/Payments-Stripe%20SDK-008CDD?logo=stripe)](https://stripe.com/)
+# 🛠️ Lak Chemicals and Hardware - Smart Hardware Store Management System
 
 **Lak Chemicals and Hardware** is an enterprise-grade, modern, AI-powered store management and commerce system designed specifically for hardware and chemical retailers. It combines a high-performance **Next.js (React 19)** web client, a robust **Java 21 & Spring Boot 3.4** transactional business server (with historic **FastAPI** prototyping), and a **LangGraph-powered multi-agent AI system** built on **Google Cloud Vertex AI (Gemini 2.5 Flash & Pro)** to streamline inventory tracking, quotation pipelines, sales processing, and conversational commerce.
 
