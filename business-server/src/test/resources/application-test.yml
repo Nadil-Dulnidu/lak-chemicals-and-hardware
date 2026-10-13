@@ -1,0 +1,45 @@
+springdotenv:
+  enabled: false
+
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+  mail:
+    host: localhost
+    port: 25
+
+clerk:
+  jwks-url: https://delicate-civet-49.clerk.accounts.dev/.well-known/jwks.json
+  issuer: https://delicate-civet-49.clerk.accounts.dev
+
+app:
+  api-key: test-api-key
+  api-key-header: x-api-key
+
+stripe:
+  secret-key: sk_test_dummy
+  frontend-url: http://localhost:3000
+
+gcp:
+  storage:
+    bucket-name: test-bucket
+    public-url-prefix: https://storage.googleapis.com/test-bucket
+
+ai-service:
+  base-url: http://localhost:8001
+  api-key: test-api-key

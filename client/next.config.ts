@@ -1,10 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  reactStrictMode: false, // Temporarily disabled to prevent double submissions
+  reactStrictMode: false,
+  output: "standalone",
   images: {
     remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+        port: "",
+        pathname: "/**",
+      },
       {
         protocol: "https",
         hostname: "ik.imagekit.io",

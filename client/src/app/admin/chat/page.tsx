@@ -104,7 +104,7 @@ function AdminChatApp() {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: `${process.env.NEXT_PUBLIC_API_URL}/chat`,
+        api: `${(process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8001").replace(/\/$/, "")}/chat`,
         headers: async () => {
           const token = await getToken({ template: "lak-chemicles-and-hardware" });
           return {
