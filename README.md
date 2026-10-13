@@ -42,22 +42,22 @@ graph TB
     %% Direct Client Ingress (Zero-Latency Gateway-less Design)
     Customer --> Client
     Admin --> Client
-    Client -.->|User Session / JWT| Clerk
-    Client -->|NEXT_PUBLIC_API_URL (/api/v1/*)| Business
-    Client -->|NEXT_PUBLIC_AGENT_API_URL (/chat SSE)| AI
+    Client -.->|"User Session / JWT"| Clerk
+    Client -->|"NEXT_PUBLIC_API_URL (/api/v1/*)"| Business
+    Client -->|"NEXT_PUBLIC_AGENT_API_URL (/chat SSE)"| AI
 
     %% Inter-Service & External Integrations
-    Business -->|JPA / Flyway| CloudSQL
-    Business -->|Product Images| GCS
-    Business -->|Checkout / Webhooks| Stripe
-    Business -.->|JWKS Token Validation| Clerk
-    Business -->|POST /api/v1/reports/analyze (x-api-key)| AI
-    Business -->|Secrets| Secrets
+    Business -->|"JPA / Flyway"| CloudSQL
+    Business -->|"Product Images"| GCS
+    Business -->|"Checkout / Webhooks"| Stripe
+    Business -.->|"JWKS Token Validation"| Clerk
+    Business -->|"POST /api/v1/reports/analyze (x-api-key)"| AI
+    Business -->|"Secrets"| Secrets
 
     %% AI to Vertex AI
-    AI -->|Tools: Cart / Products / Quotes| Business
-    AI -->|langchain_google_genai (vertexai=True)| GeminiFlash
-    AI -->|langchain_google_genai (vertexai=True)| GeminiPro
+    AI -->|"Tools: Cart / Products / Quotes"| Business
+    AI -->|"langchain_google_genai (vertexai=True)"| GeminiFlash
+    AI -->|"langchain_google_genai (vertexai=True)"| GeminiPro
 ```
 
 ---
