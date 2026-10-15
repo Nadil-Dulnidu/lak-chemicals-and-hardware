@@ -17,7 +17,7 @@ permissions:
   id-token: write
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'lak-chemicals' }}
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'lak-chem-hrd' }}
   REGION: asia-south1
   GAR_REPOSITORY: lak-chemicals-prod-repo
   WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}

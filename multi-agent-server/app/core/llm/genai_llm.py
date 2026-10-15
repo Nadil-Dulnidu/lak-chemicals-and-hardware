@@ -75,8 +75,8 @@ class GenAIModelManager:
             )
 
             project_id: str = (
-                get_config_value("vertex_ai", "project", default="lak-chemicals")
-                or os.getenv("GCP_PROJECT_ID", "lak-chemicals")
+                get_config_value("vertex_ai", "project", default="lak-chem-hrd")
+                or os.getenv("GCP_PROJECT_ID", "lak-chem-hrd")
             )
             location: str = (
                 get_config_value("vertex_ai", "location", default="asia-south1")

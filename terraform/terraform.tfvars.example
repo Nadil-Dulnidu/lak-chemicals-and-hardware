@@ -5,7 +5,7 @@
 # ==============================================================================
 
 # Core Project Configuration
-project_id   = "your-gcp-project-id"
+project_id   = "lak-chem-hrd"
 project_name = "lak-chemicals"
 environment  = "prod"
 region       = "asia-south1"
